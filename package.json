@@ -1,8 +1,8 @@
 {
-  "name": "base-react-vite-hoidanit",
+  "name": "base-react-vite-bca",
   "author": {
-    "name": "Hỏi Dân IT & Eric",
-    "url": "https://hoidanit.vn"
+    "name": "BCA",
+    "url": "https://bca.vn"
   },
   "private": true,
   "version": "0.0.1",
@@ -15,8 +15,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/icons": "5.3.7",
+    "antd": "5.18.1",
+    "axios": "1.7.2",
+    "moment": "2.30.1",
+    "nprogress": "0.2.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-countup": "6.4.2",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.23.1"
   },
   "devDependencies": {
     "@types/react": "18.3.3",

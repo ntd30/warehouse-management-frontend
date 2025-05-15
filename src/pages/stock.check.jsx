@@ -1,0 +1,402 @@
+import { useState, useEffect, useRef } from 'react';
+import {
+    Row,
+    Col,
+    Card,
+    Form,
+    Input,
+    InputNumber,
+    Button,
+    Select,
+    DatePicker,
+    Table,
+    Space,
+    Typography,
+    message,
+    Tag,
+    Modal,
+    Tooltip
+} from 'antd';
+import {
+    DeleteOutlined,
+    SaveOutlined,
+    FileExcelOutlined,
+    MailOutlined,
+    BarcodeOutlined,
+    CheckCircleTwoTone,
+    CloseCircleTwoTone,
+    SearchOutlined
+} from '@ant-design/icons';
+import moment from 'moment';
+// Giả sử bạn có một thư viện để xuất Excel, ví dụ 'xlsx'
+// import * as XLSX from 'xlsx'; // Cần cài đặt: npm install xlsx
+
+const { Text, Paragraph } = Typography;
+
+// --- Dữ liệu mẫu ---
+const mockProductsMaster = [
+    { id: 'SP001', name: 'Sản phẩm Alpha', unit: 'Cái', storageLocation: 'Kệ A1-01', systemStock: 100 },
+    { id: 'SP002', name: 'Sản phẩm Beta', unit: 'Hộp', storageLocation: 'Kệ A2-03', systemStock: 50 },
+    { id: 'SP003', name: 'Sản phẩm Gamma', unit: 'Thùng', storageLocation: 'Kệ B1-05', systemStock: 200 },
+    { id: 'SP004', name: 'Sản phẩm Delta', unit: 'Kg', storageLocation: 'Khu C', systemStock: 75 },
+    { id: 'SP005', name: 'Sản phẩm Epsilon', unit: 'Lốc', storageLocation: 'Kệ A1-02', systemStock: 0 },
+];
+
+const mockStaff = [
+    { id: 'staff1', name: 'Nguyễn Văn A' },
+    { id: 'staff2', name: 'Trần Thị B' }
+];
+// --- Kết thúc dữ liệu mẫu ---
+
+const StockCheckScreen = () => {
+    const [form] = Form.useForm(); // Form thông tin phiếu kiểm kê
+    const [itemScanForm] = Form.useForm(); // Form để quét/nhập mã SP
+
+    const [countSheetItems, setCountSheetItems] = useState([]);
+    const [isReportModalVisible, setIsReportModalVisible] = useState(false);
+    const [reportEmail, setReportEmail] = useState('');
+    const productCodeInputRef = useRef(null); // Ref cho input mã sản phẩm
+
+    useEffect(() => {
+        form.setFieldsValue({
+            countSheetId: `PKK${moment().format('YYYYMMDDHHmmss')}`,
+            countDate: moment(),
+        });
+        if (productCodeInputRef.current) {
+            productCodeInputRef.current.focus();
+        }
+    }, [form]);
+
+    const handleAddOrFindProduct = (values) => {
+        const { productCode } = values;
+        if (!productCode || productCode.trim() === "") {
+            message.error('Vui lòng nhập hoặc quét mã sản phẩm!');
+            return;
+        }
+
+        const existingItemIndex = countSheetItems.findIndex(item => item.productCode === productCode);
+
+        if (existingItemIndex !== -1) {
+            message.info(`Sản phẩm "${productCode}" đã có trong danh sách. Bạn có thể cập nhật số lượng thực tế.`);
+            // Tùy chọn: Scroll tới dòng đó hoặc focus vào input số lượng thực tế của dòng đó
+            // Ví dụ: document.getElementById(`actualStock_${productCode}`)?.focus();
+        } else {
+            const productDetails = mockProductsMaster.find(p => p.id === productCode);
+            if (productDetails) {
+                const newItem = {
+                    key: productDetails.id, // Sử dụng productCode làm key
+                    productCode: productDetails.id,
+                    productName: productDetails.name,
+                    storageLocation: productDetails.storageLocation,
+                    unit: productDetails.unit,
+                    systemStock: productDetails.systemStock,
+                    actualStock: undefined, // Để trống cho người dùng nhập
+                    difference: 0, // Mặc định
+                    countStatus: 'Chưa kiểm kê', // Trạng thái ban đầu
+                };
+                setCountSheetItems(prevItems => [...prevItems, newItem]);
+                message.success(`Đã thêm sản phẩm "${productDetails.name}" vào danh sách kiểm kê.`);
+            } else {
+                message.error(`Không tìm thấy thông tin cho mã sản phẩm: ${productCode}`);
+            }
+        }
+        itemScanForm.resetFields();
+        if (productCodeInputRef.current) {
+            productCodeInputRef.current.focus();
+        }
+    };
+
+    const handleActualStockChange = (value, productCode) => {
+        setCountSheetItems(prevItems =>
+            prevItems.map(item => {
+                if (item.productCode === productCode) {
+                    const actual = value === null || value === undefined ? 0 : value; // Xử lý null/undefined
+                    const system = item.systemStock;
+                    const diff = actual - system;
+                    let status = 'Chưa kiểm kê';
+                    if (value !== undefined && value !== null) { // Chỉ cập nhật status nếu đã nhập số thực tế
+                        status = diff === 0 ? 'Trùng khớp' : 'Phát hiện sai lệch';
+                    }
+                    return { ...item, actualStock: actual, difference: diff, countStatus: status };
+                }
+                return item;
+            })
+        );
+    };
+
+    const handleRemoveItem = (productCode) => {
+        setCountSheetItems(prevItems => prevItems.filter(item => item.productCode !== productCode));
+        message.info(`Đã xóa sản phẩm "${productCode}" khỏi danh sách.`);
+    };
+
+    const handleCompleteCount = () => {
+        const uncountedItems = countSheetItems.filter(item => item.actualStock === undefined || item.actualStock === null);
+        if (uncountedItems.length > 0) {
+            Modal.confirm({
+                title: 'Cảnh báo',
+                content: `Còn ${uncountedItems.length} mặt hàng chưa nhập số lượng thực tế. Bạn có chắc muốn hoàn tất kiểm kê?`,
+                okText: 'Hoàn tất',
+                cancelText: 'Tiếp tục kiểm kê',
+                onOk: () => {
+                    finalizeCount();
+                }
+            });
+        } else {
+            finalizeCount();
+        }
+    };
+
+    const finalizeCount = () => {
+        // Logic xử lý khi hoàn tất kiểm kê (ví dụ: lưu vào DB)
+        console.log('Phiếu kiểm kê hoàn tất:', {
+            sheetInfo: form.getFieldsValue(),
+            items: countSheetItems
+        });
+        message.success('Đã hoàn tất kiểm kê kho!');
+        // Có thể disable các input hoặc chuyển sang trạng thái chỉ xem
+    }
+
+    const handleExportExcel = () => {
+        if (countSheetItems.length === 0) {
+            message.warning('Không có dữ liệu để xuất báo cáo.');
+            return;
+        }
+        const dataToExport = countSheetItems.map(item => ({
+            'Mã Hàng': item.productCode,
+            'Tên Hàng': item.productName,
+            'Vị Trí': item.storageLocation,
+            'ĐVT': item.unit,
+            'Tồn Hệ Thống': item.systemStock,
+            'Tồn Thực Tế': item.actualStock === undefined || item.actualStock === null ? 'Chưa nhập' : item.actualStock,
+            'Chênh Lệch': item.actualStock === undefined || item.actualStock === null ? '' : item.difference,
+            'Trạng Thái': item.countStatus,
+        }));
+        // Sử dụng thư viện (ví dụ xlsx) để tạo file Excel
+        // import * as XLSX from 'xlsx';
+        // const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        // const workbook = XLSX.utils.book_new();
+        // XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoKiemKe");
+        // XLSX.writeFile(workbook, `BaoCaoKiemKe_${moment().format("YYYYMMDD")}.xlsx`);
+        console.log("Dữ liệu xuất Excel:", dataToExport);
+        message.success("Đã giả lập xuất báo cáo Excel thành công! (Cần tích hợp thư viện 'xlsx')");
+    };
+
+    const showSendReportModal = () => {
+        if (countSheetItems.length === 0) {
+            message.warning('Không có dữ liệu để gửi báo cáo.');
+            return;
+        }
+        setIsReportModalVisible(true);
+    };
+
+    const handleSendReportEmail = () => {
+        if (!reportEmail) {
+            message.error('Vui lòng nhập địa chỉ email người nhận!');
+            return;
+        }
+        // Logic gửi email (sử dụng API backend)
+        console.log(`Gửi báo cáo kiểm kê đến: ${reportEmail}`, countSheetItems);
+        message.success(`Đã giả lập gửi báo cáo đến ${reportEmail} thành công!`);
+        setIsReportModalVisible(false);
+        setReportEmail('');
+    };
+
+    const columns = [
+        { title: '#', key: 'index', render: (text, record, index) => index + 1, width: 50, align: 'center' },
+        { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120, fixed: 'left' },
+        { title: 'Tên Hàng', dataIndex: 'productName', key: 'productName', width: 250, ellipsis: true, fixed: 'left' },
+        { title: 'Vị Trí Lưu Trữ', dataIndex: 'storageLocation', key: 'storageLocation', width: 150, ellipsis: true },
+        { title: 'ĐVT', dataIndex: 'unit', key: 'unit', width: 80 },
+        { title: 'Tồn Hệ Thống', dataIndex: 'systemStock', key: 'systemStock', align: 'right', width: 130 },
+        {
+            title: 'Tồn Thực Tế',
+            dataIndex: 'actualStock',
+            key: 'actualStock',
+            align: 'right',
+            width: 150,
+            render: (text, record) => (
+                <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    value={text}
+                    onChange={value => handleActualStockChange(value, record.productCode)}
+                    id={`actualStock_${record.productCode}`} // ID để focus nếu cần
+                    placeholder="Nhập SL"
+                />
+            ),
+        },
+        {
+            title: 'Chênh Lệch',
+            dataIndex: 'difference',
+            key: 'difference',
+            align: 'right',
+            width: 120,
+            render: (text, record) => {
+                if (record.actualStock === undefined || record.actualStock === null) return <Text type="secondary">-</Text>;
+                if (text > 0) return <Text type="success" strong>+{text}</Text>;
+                if (text < 0) return <Text type="danger" strong>{text}</Text>;
+                return <Text strong>{text}</Text>;
+            },
+        },
+        {
+            title: 'Trạng Thái Kiểm Kê',
+            dataIndex: 'countStatus',
+            key: 'countStatus',
+            width: 180,
+            align: 'center',
+            render: (status, record) => {
+                if (record.actualStock === undefined || record.actualStock === null) return <Tag>Chưa nhập SL thực tế</Tag>;
+                if (status === 'Trùng khớp') return <Tag icon={<CheckCircleTwoTone twoToneColor="#52c41a" />} color="success">Trùng khớp</Tag>;
+                if (status === 'Phát hiện sai lệch') return <Tag icon={<CloseCircleTwoTone twoToneColor="#eb2f96" />} color="error">Phát hiện sai lệch</Tag>;
+                return <Tag>{status}</Tag>;
+            },
+        },
+        {
+            title: 'Thao Tác',
+            key: 'action',
+            width: 100,
+            align: 'center',
+            fixed: 'right',
+            render: (_, record) => (
+                <Tooltip title="Xóa khỏi danh sách">
+                    <Button icon={<DeleteOutlined />} type="text" danger onClick={() => handleRemoveItem(record.productCode)} />
+                </Tooltip>
+            ),
+        },
+    ];
+
+    return (
+        <>
+            <Form form={form} layout="vertical">
+                <Card title="Thông Tin Phiếu Kiểm Kê" bordered={false} style={{ marginBottom: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
+                    <Row gutter={16}>
+                        <Col xs={24} sm={12} md={6}>
+                            <Form.Item name="countSheetId" label="Mã Phiếu Kiểm Kê">
+                                <Input readOnly />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Form.Item name="countDate" label="Ngày Kiểm Kê" rules={[{ required: true, message: 'Vui lòng chọn ngày kiểm kê!' }]}>
+                                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Form.Item name="staffInCharge" label="Nhân Viên Phụ Trách" rules={[{ required: true, message: 'Vui lòng chọn nhân viên!' }]}>
+                                <Select placeholder="Chọn nhân viên" options={mockStaff.map(s => ({ label: s.name, value: s.id }))} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Form.Item name="notes" label="Ghi Chú">
+                                <Input.TextArea rows={1} placeholder="Ghi chú cho đợt kiểm kê" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </Card>
+            </Form>
+
+            <Card title="Quét/Nhập Sản Phẩm Cần Kiểm Kê" bordered={false} style={{ marginBottom: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
+                <Form form={itemScanForm} onFinish={handleAddOrFindProduct} layout="inline">
+                    <Form.Item
+                        name="productCode"
+                        label="Mã sản phẩm"
+                        rules={[{ required: true, message: 'Nhập mã sản phẩm!' }]}
+                        style={{ flexGrow: 1, marginRight: 8 }}
+                    >
+                        <Input
+                            ref={productCodeInputRef}
+                            prefix={<BarcodeOutlined />}
+                            placeholder="Quét mã vạch hoặc nhập mã sản phẩm"
+                            allowClear
+                        />
+                    </Form.Item>
+                    <Form.Item>
+                        <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                            Tìm / Thêm vào DS
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Card>
+
+            <Card title="Danh Sách Mặt Hàng Kiểm Kê" bordered={false} style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}
+                extra={
+                    <Space>
+                        <Button onClick={handleCompleteCount} type="primary" icon={<SaveOutlined />} disabled={countSheetItems.length === 0}>
+                            Hoàn Tất Kiểm Kê
+                        </Button>
+                    </Space>
+                }
+            >
+                <Table
+                    columns={columns}
+                    dataSource={countSheetItems}
+                    rowKey="key"
+                    bordered
+                    size="small"
+                    scroll={{ x: 1500, y: 400 }} // Cho phép cuộn ngang và dọc
+                    pagination={countSheetItems.length > 10 ? { pageSize: 10, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'] } : false}
+                    summary={pageData => {
+                        if (!pageData || pageData.length === 0) return null;
+                        let totalSystemStock = 0;
+                        let totalActualStock = 0;
+                        let totalDifference = 0;
+                        let allCounted = true;
+
+                        pageData.forEach(({ systemStock, actualStock, difference }) => {
+                            totalSystemStock += (systemStock || 0);
+                            if (actualStock !== undefined && actualStock !== null) {
+                                totalActualStock += actualStock;
+                                totalDifference += difference;
+                            } else {
+                                allCounted = false; // Nếu có 1 item chưa nhập SL thực tế
+                            }
+                        });
+
+                        return (
+                            <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 'bold' }}>
+                                <Table.Summary.Cell index={0} colSpan={5} align="right">Tổng cộng:</Table.Summary.Cell>
+                                <Table.Summary.Cell index={1} align="right">{totalSystemStock}</Table.Summary.Cell>
+                                <Table.Summary.Cell index={2} align="right">{allCounted ? totalActualStock : <Text type="secondary">Chưa hoàn tất</Text>}</Table.Summary.Cell>
+                                <Table.Summary.Cell index={3} align="right">{allCounted ? (totalDifference > 0 ? `+${totalDifference}` : totalDifference) : <Text type="secondary">-</Text>}</Table.Summary.Cell>
+                                <Table.Summary.Cell index={4} colSpan={2}></Table.Summary.Cell>
+                            </Table.Summary.Row>
+                        );
+                    }}
+                />
+            </Card>
+
+            <Row justify="end" style={{ marginTop: 24 }}>
+                <Space>
+                    <Button icon={<FileExcelOutlined />} onClick={handleExportExcel} disabled={countSheetItems.length === 0}>
+                        Tải Báo Cáo (Excel)
+                    </Button>
+                    <Button icon={<MailOutlined />} onClick={showSendReportModal} disabled={countSheetItems.length === 0}>
+                        Gửi Báo Cáo Qua Email
+                    </Button>
+                </Space>
+            </Row>
+
+            <Modal
+                title="Gửi Báo Cáo Kiểm Kê Qua Email"
+                open={isReportModalVisible}
+                onOk={handleSendReportEmail}
+                onCancel={() => setIsReportModalVisible(false)}
+                okText="Gửi Báo Cáo"
+                cancelText="Hủy"
+            >
+                <Form layout="vertical">
+                    <Form.Item label="Địa chỉ Email Người Nhận" required>
+                        <Input
+                            type="email"
+                            value={reportEmail}
+                            onChange={(e) => setReportEmail(e.target.value)}
+                            placeholder="Nhập địa chỉ email, ví dụ: quanly@example.com"
+                        />
+                    </Form.Item>
+                    <Paragraph type="secondary">Báo cáo kiểm kê (dạng Excel) sẽ được đính kèm và gửi đến địa chỉ email này.</Paragraph>
+                </Form>
+            </Modal>
+        </>
+    );
+};
+
+export default StockCheckScreen;
