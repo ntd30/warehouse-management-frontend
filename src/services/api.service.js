@@ -20,3 +20,18 @@ export const registerAPI = (username, email, password, fullName) => {
     }
     return axios.post(URL_BACKEND, data)
 }
+
+export const fetchProductByCodeAPI = (productCode) => {
+    const URL_BACKEND = `/api/products/${productCode}`;
+    return axios.get(URL_BACKEND);
+}
+
+export const warehouse = (formData) => {
+    const URL_BACKEND = `/api/stock-in`;
+    return axios.post(URL_BACKEND, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+}
+

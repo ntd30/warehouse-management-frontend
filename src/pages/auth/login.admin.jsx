@@ -1,5 +1,5 @@
 import { ArrowRightOutlined, LockOutlined, UserOutlined } from "@ant-design/icons"
-import { Button, Card, Col, Divider, Form, Input, message, Row, Space, Typography } from "antd"
+import { Button, Card, Col, Divider, Form, Input, notification, Row, Space, Typography } from "antd"
 import { useContext, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { AuthContext } from "../../components/context/auth.context"
@@ -18,17 +18,18 @@ const LoginAdminPage = () => {
         const res = await loginAPI(values.username, values.password)
 
         if (res.data) {
-            if (res.data.user.roleName !== "Admin") {
-                message.error("Đăng nhập thất bại")
-                navigate("/login-admin")
-            } else {
-                message.success("Đăng nhập thành công")
-                localStorage.setItem('access_token', res.data.token)
-                setUser(res.data.user)
-                navigate("/admin")
-            }
+            localStorage.setItem('access_token', res.data.token)
+            setUser(res.data.user)
+            notification.success({
+                message: "Đăng nhập",
+                description: "Đăng nhập thành công"
+            })
+            navigate("/")
         } else {
-            message.error(res)
+            notification.success({
+                message: "Đăng nhập",
+                description: "Đăng nhập thất bại"
+            })
         }
         setLoading(false)
     }
@@ -40,7 +41,7 @@ const LoginAdminPage = () => {
             <Col xs={24} md={16} lg={6}>
                 <Card style={{ borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                     <Title level={2} style={{ textAlign: 'center', marginBottom: '30px' }}>
-                        Đăng nhập Trang quản trị
+                        Đăng nhập
                     </Title>
                     <Form
                         onFinish={onFinish}

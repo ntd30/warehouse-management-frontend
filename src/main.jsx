@@ -13,6 +13,8 @@ import StockOutScreen from './pages/stock.out.jsx';
 import ReportsScreen from './pages/report.jsx';
 import SettingsScreen from './pages/setting.jsx';
 import StockCheckScreen from './pages/stock.check.jsx';
+import PrivateRoute from './pages/private.route.jsx';
+import ErrorPage from './pages/error.jsx';
 
 const router = createBrowserRouter([
   {
@@ -27,9 +29,10 @@ const router = createBrowserRouter([
   {
     path: "/",
     element:
-      // <PrivateRouteAdmin>
+      <PrivateRoute>
         <LayoutAdmin />,
-      // </PrivateRouteAdmin>,
+      </PrivateRoute>,
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,

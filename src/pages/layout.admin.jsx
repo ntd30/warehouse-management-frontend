@@ -1,8 +1,8 @@
 import {
-    AppstoreOutlined, CheckSquareOutlined, EditOutlined, HomeOutlined,
+    AppstoreOutlined, CheckSquareOutlined, EditOutlined,
     LoginOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SettingOutlined
 } from "@ant-design/icons";
-import { Avatar, Button, Dropdown, Layout, Menu, message, Space } from "antd"
+import { Avatar, Button, Dropdown, Layout, Menu, notification, Space } from "antd"
 import React, { useContext, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { AuthContext } from "../components/context/auth.context";
@@ -49,32 +49,42 @@ const LayoutAdmin = () => {
     const handleLogout = async () => {
         localStorage.removeItem('access_token')
         setUser({})
-        message.success("Đăng xuất thành công")
+        notification.success({
+            message: "Đăng xuất",
+            description: "Đăng xuất thành công"
+        })
         navigate('/')
     }
 
     const itemsDropdown = [
-        {
-            label: <Link to={'/'}>Trang chủ</Link>,
-            key: 'home',
-            icon: <HomeOutlined />
-        },
-        {
+        ...(user && user.id ? [{
             label: <label
                 style={{ cursor: 'pointer' }}
                 onClick={handleLogout}
             >Đăng xuất</label>,
             key: 'logout',
             icon: <LogoutOutlined />
-        },
-    ]
+        }] : []),
+        ...(!user.id ? [{
+            label: <Link
+                style={{ cursor: 'pointer' }}
+                to="/login"
+            >Đăng nhập</Link>,
+            key: 'login', // Unique key
+            icon: <LoginOutlined />
+        }] : []),
+        {
+            label: "DUy dz",
+            key: "123"
+        }
+    ];
 
     return (
         <>
             <Layout
                 style={{ minHeight: '100vh' }}
             >
-                <Sider theme="light"  collapsed={collapsed}>
+                <Sider theme="light" collapsed={collapsed}>
                     <div className="demo-logo-vertical" />
                     <div style={{ textAlign: 'center' }}>
                         <img src="/img/logo.jpg" alt="Logo" style={{ width: "100%" }} />
