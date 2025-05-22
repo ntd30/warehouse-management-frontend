@@ -50,8 +50,7 @@ const LayoutAdmin = () => {
         localStorage.removeItem('access_token')
         setUser({})
         notification.success({
-            message: "Đăng xuất",
-            description: "Đăng xuất thành công"
+            message: "Đăng xuất thành công"
         })
         navigate('/')
     }
@@ -73,10 +72,6 @@ const LayoutAdmin = () => {
             key: 'login', // Unique key
             icon: <LoginOutlined />
         }] : []),
-        {
-            label: "DUy dz",
-            key: "123"
-        }
     ];
 
     return (

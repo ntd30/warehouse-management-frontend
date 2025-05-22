@@ -35,3 +35,8 @@ export const warehouse = (formData) => {
     });
 }
 
+export const StockOutAPI = (data) => {
+    const URL_BACKEND = `/api/stock-out`;
+    return axios.post(URL_BACKEND, data);
+}
+

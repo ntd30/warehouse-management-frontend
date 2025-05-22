@@ -21,14 +21,14 @@ const LoginAdminPage = () => {
             localStorage.setItem('access_token', res.data.token)
             setUser(res.data.user)
             notification.success({
-                message: "Đăng nhập",
-                description: "Đăng nhập thành công"
+                message: "Đăng nhập thành công",
+                // description: "Đăng nhập thành công"
             })
             navigate("/")
         } else {
             notification.success({
-                message: "Đăng nhập",
-                description: "Đăng nhập thất bại"
+                message: "Đăng nhập thất bại",
+                // description: "Đăng nhập thất bại"
             })
         }
         setLoading(false)

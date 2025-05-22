@@ -63,7 +63,7 @@ const StockInScreen = () => {
     const [itemForm] = Form.useForm();
     const [addedItems, setAddedItems] = useState([]);
     const [fileList, setFileList] = useState([]);
-    const [products, setProducts] = useState(mockProducts);
+    // const [products, setProducts] = useState(mockProducts);
     const [suppliers, setSuppliers] = useState(mockSuppliers);
     const [locations, setLocations] = useState(mockStorageLocations);
     const [units, setUnits] = useState(mockUnits);
@@ -89,7 +89,7 @@ const StockInScreen = () => {
             scannerRef.current = new Html5QrcodeScanner("reader", config, false);
 
             scannerRef.current.render(
-                async (decodedText) => {
+                (decodedText) => {
                     itemForm.setFieldsValue({ productCode: decodedText });
                     handleProductCodeChange(decodedText);
                     setIsScanning(false);
@@ -202,41 +202,41 @@ const StockInScreen = () => {
         multiple: true,
     };
 
-    const handleAddItemToSelect = (value, type, inputIdToClear) => {
-        if (!value || value.trim() === "") {
-            message.warn("Vui lòng nhập giá trị để thêm mới.");
-            return;
-        }
-        message.info(`"${value}" sẽ được xem xét để thêm mới khi lưu phiếu. (Backend xử lý)`);
-        const tempId = value.toLowerCase().replace(/\s+/g, '') + '_' + Date.now();
-        const newItem = { id: tempId, name: value };
+    // const handleAddItemToSelect = (value, type, inputIdToClear) => {
+    //     if (!value || value.trim() === "") {
+    //         message.warn("Vui lòng nhập giá trị để thêm mới.");
+    //         return;
+    //     }
+    //     message.info(`"${value}" sẽ được xem xét để thêm mới khi lưu phiếu. (Backend xử lý)`);
+    //     const tempId = value.toLowerCase().replace(/\s+/g, '') + '_' + Date.now();
+    //     const newItem = { id: tempId, name: value };
 
-        let success = false;
-        if (type === 'product') {
-            setProducts(prev => [...prev, newItem]);
-            itemForm.setFieldsValue({ productCode: newItem.id, productName: newItem.name });
-            success = true;
-        } else if (type === 'supplier') {
-            setSuppliers(prev => [...prev, newItem]);
-            itemForm.setFieldsValue({ supplier: newItem.id });
-            success = true;
-        } else if (type === 'location') {
-            setLocations(prev => [...prev, newItem]);
-            itemForm.setFieldsValue({ storageLocation: newItem.id });
-            success = true;
-        } else if (type === 'unit') {
-            setUnits(prev => [...prev, newItem]);
-            itemForm.setFieldsValue({ unit: newItem.id });
-            success = true;
-        }
+    //     let success = false;
+    //     if (type === 'product') {
+    //         setProducts(prev => [...prev, newItem]);
+    //         itemForm.setFieldsValue({ productCode: newItem.id, productName: newItem.name });
+    //         success = true;
+    //     } else if (type === 'supplier') {
+    //         setSuppliers(prev => [...prev, newItem]);
+    //         itemForm.setFieldsValue({ supplier: newItem.id });
+    //         success = true;
+    //     } else if (type === 'location') {
+    //         setLocations(prev => [...prev, newItem]);
+    //         itemForm.setFieldsValue({ storageLocation: newItem.id });
+    //         success = true;
+    //     } else if (type === 'unit') {
+    //         setUnits(prev => [...prev, newItem]);
+    //         itemForm.setFieldsValue({ unit: newItem.id });
+    //         success = true;
+    //     }
 
-        if (success && inputIdToClear) {
-            const inputElement = document.getElementById(inputIdToClear);
-            if (inputElement) {
-                inputElement.value = '';
-            }
-        }
-    };
+    //     if (success && inputIdToClear) {
+    //         const inputElement = document.getElementById(inputIdToClear);
+    //         if (inputElement) {
+    //             inputElement.value = '';
+    //         }
+    //     }
+    // };
 
     const columns = [
         { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120, ellipsis: true },
@@ -304,7 +304,7 @@ const StockInScreen = () => {
                                 <Form.Item name="productCode" label="Mã Hàng" rules={[{ required: true, message: 'Mã hàng không được trống!' }]}>
                                     <Input
                                         // showSearch
-                                        placeholder="Nhập hoặc chọn mã hàng"
+                                        placeholder="Nhập hoặc quét mã hàng"
                                         allowClear
                                         // optionFilterProp="label"
                                         onChange={handleProductCodeChange}
