@@ -52,7 +52,7 @@ const LayoutAdmin = () => {
         notification.success({
             message: "Đăng xuất thành công"
         })
-        navigate('/')
+        navigate('/login')
     }
 
     const itemsDropdown = [

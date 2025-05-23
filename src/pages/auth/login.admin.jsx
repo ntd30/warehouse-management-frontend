@@ -11,15 +11,15 @@ const LoginAdminPage = () => {
     const [form] = Form.useForm()
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
-    const { setUser } = useContext(AuthContext)
 
     const onFinish = async (values) => {
         setLoading(true)
         const res = await loginAPI(values.username, values.password)
 
+        console.log("reslogin", res)
+
         if (res.data) {
             localStorage.setItem('access_token', res.data.token)
-            setUser(res.data.user)
             notification.success({
                 message: "Đăng nhập thành công",
                 // description: "Đăng nhập thành công"
@@ -80,14 +80,16 @@ const LoginAdminPage = () => {
                         <Divider plain style={{ fontSize: '14px', color: '#8c8c8c', margin: '20px 0' }} />
 
                         {/* Link Trở về trang chủ */}
+                        {/*
                         <div style={{ textAlign: "start", marginTop: "15px" }}>
                             <Link to="/">
-                                <Space align="center" size={4}> {/* Dùng Space để căn icon và text */}
-                                    <ArrowRightOutlined rotate={180} /> {/* Icon quay lại */}
+                                <Space align="center" size={4}>
+                                    <ArrowRightOutlined rotate={180} />
                                     Trở về trang chủ
                                 </Space>
                             </Link>
                         </div>
+                        */}
                     </Form >
                 </Card>
             </Col>

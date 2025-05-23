@@ -128,7 +128,8 @@ const StockInScreen = () => {
 
     const handleProductCodeChange = async (event) => {
         // const product = products.find(p => p.id === value);
-        const product = await fetchProductByCodeAPI(event?.target?.value ? event?.target?.value : event)
+        const product = await fetchProductByCodeAPI(event?.target?.value ? event?.target?.value : event);
+        console.log("product from backend", product)
         if (product.data) {
             itemForm.setFieldsValue({
                 productName: product.data.productName,

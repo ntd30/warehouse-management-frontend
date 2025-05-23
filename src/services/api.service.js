@@ -40,3 +40,8 @@ export const StockOutAPI = (data) => {
     return axios.post(URL_BACKEND, data);
 }
 
+export const getProfileAPI = () => {
+    const URL_BACKEND = `/api/auth/profile`;
+    return axios.get(URL_BACKEND);
+}
+
