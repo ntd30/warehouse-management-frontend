@@ -45,3 +45,61 @@ export const getProfileAPI = () => {
     return axios.get(URL_BACKEND);
 }
 
+
+export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {
+    try {
+        const response = await axios.get('/api/reports/warehouse', {
+            params: { startDate, endDate, reportType }
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const exportWarehouseReportAPI = async (startDate, endDate, reportType) => {
+    try {
+        const response = await axios.get('/api/reports/warehouse/export', {
+            params: { startDate, endDate, reportType },
+            responseType: 'blob'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const fetchProductReportAPI = async (filterType) => {
+    try {
+        const response = await axios.get('/api/reports/products', {
+            params: { filterType }
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const exportProductReportAPI = async (filterType) => {
+    try {
+        const response = await axios.get('/api/reports/products/export', {
+            params: { filterType },
+            responseType: 'blob'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+export const fetchDemandForecastAPI = async (productCode) => {
+    try {
+        const response = await axios.get('/api/forecast/demand', {
+            params: { productCode: productCode !== 'all' ? productCode : undefined }
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
