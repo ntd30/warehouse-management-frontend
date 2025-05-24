@@ -26,7 +26,7 @@ const LoginAdminPage = () => {
             })
             navigate("/")
         } else {
-            notification.success({
+            notification.error({
                 message: "Đăng nhập thất bại",
                 // description: "Đăng nhập thất bại"
             })
