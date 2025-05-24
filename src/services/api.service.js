@@ -45,6 +45,26 @@ export const getProfileAPI = () => {
     return axios.get(URL_BACKEND);
 }
 
+export const createSupplierAPI = async (supplierData) => {
+    const URL_BACKEND = `/api/suppliers`;
+    return await axios.post(URL_BACKEND, supplierData);
+};
+
+export const createLocationAPI = async (locationData) => {
+    const URL_BACKEND = `/api/locations`;
+    return await axios.post(URL_BACKEND, locationData);
+};
+
+export const fetchSuppliersAPI = async () => {
+    const URL_BACKEND = `/api/suppliers`;
+    return await axios.get(URL_BACKEND);
+};
+
+export const fetchLocationsAPI = async () => {
+    const URL_BACKEND = `/api/locations`;
+    return await axios.get(URL_BACKEND);
+};
+
 
 export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {
     try {
