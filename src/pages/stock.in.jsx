@@ -41,11 +41,11 @@ const StockInScreen = () => {
     const [suppliers, setSuppliers] = useState([]);
     const [locations, setLocations] = useState([]);
     const [units, setUnits] = useState([
-        { id: 'cai', name: 'Cái' },
-        { id: 'qua', name: 'Quả' },
-        { id: 'hop', name: 'Hộp' },
-        { id: 'thung', name: 'Thùng' },
-        { id: 'kg', name: 'Kg' },
+        { id: 'Cái', name: 'Cái' },
+        { id: 'Quả', name: 'Quả' },
+        { id: 'Hộp', name: 'Hộp' },
+        { id: 'Thùng', name: 'Thùng' },
+        { id: 'Kg', name: 'Kg' },
     ]);
     const [isScanning, setIsScanning] = useState(false);
     const scannerRef = useRef(null);
@@ -239,7 +239,7 @@ const StockInScreen = () => {
                 message.error('Lỗi khi lưu phiếu nhập.');
             }
         } catch (error) {
-            message.error('Lỗi khi lưu phiếu nhập: ' + error.message);
+            message.error('Lỗi khi lưu phiếu nhập: ');
         }
     };
 

@@ -74,6 +74,7 @@ const StockOutScreen = () => {
     const [units, setUnits] = useState(mockUnits);
     const [customers, setCustomers] = useState(mockCustomers);
     const [isScanning, setIsScanning] = useState(false);
+    const [currentStock, setCurrentStock] = useState(0);
     const scannerRef = useRef(null);
     const { user } = useContext(AuthContext);
 
@@ -121,9 +122,9 @@ const StockOutScreen = () => {
             return;
         }
 
-        if (values.quantity > values.currentStockDisplay) {
-            message.warning(`Số lượng xuất (${values.quantity}) vượt quá số lượng tồn kho (${values.currentStockDisplay}) của sản phẩm "${values.productName}"!`);
-            itemForm.setFields([{ name: 'quantity', errors: [`Tồn kho: ${values.currentStockDisplay}`] }]);
+        if (values.quantity > currentStock) {
+            message.warning(`Số lượng xuất (${values.quantity}) vượt quá số lượng tồn kho (${currentStock}) của sản phẩm "${values.productName}"!`);
+            itemForm.setFields([{ name: 'quantity', errors: [`Tồn kho: ${currentStock}`] }]);
             return;
         }
         if (values.quantity <= 0) {
@@ -147,9 +148,18 @@ const StockOutScreen = () => {
     };
 
     const handleProductCodeChange = async (event) => {
-        const res = await fetchProductByCodeAPI(event?.target?.value ? event?.target?.value : event)
+        const productCode = event?.target?.value ? event.target.value : event;
+
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+
+        const res = await fetchProductByCodeAPI(productCode);
+
         const product = res.data
+
         if (product) {
+            setCurrentStock(product.quantity);
             itemForm.setFieldsValue({
                 productName: product.productName,
                 unit: product.unit,
@@ -166,6 +176,7 @@ const StockOutScreen = () => {
                 itemForm.setFields([{ name: 'quantity', errors: [] }]);
             }
         } else {
+            message.error("Mã hàng không tồn tại");
             itemForm.resetFields(['productName', 'currentStockDisplay', 'quantity', 'unit', 'supplier', 'storageLocation']);
         }
     };
@@ -180,6 +191,7 @@ const StockOutScreen = () => {
             return;
         }
         const voucherData = {
+            code: values.voucherCode,
             username: user.username,
             destination: values.destination,
             note: values.reason || "Xuất hàng",
@@ -189,27 +201,38 @@ const StockOutScreen = () => {
             }))
         };
 
-        const res = await StockOutAPI(voucherData);
-
-        if (res) {
-            message.success('Đã lưu phiếu xuất thành công!');
-            form.resetFields();
-            itemForm.resetFields();
-            setAddedItems([]);
-            form.setFieldsValue({
-                voucherCode: `PN${moment().format('YYYYMMDDHHmmss')}`,
-                dateIn: moment(),
-            });
-        } else {
-            message.error('Lỗi khi lưu phiếu nhập: ' + res);
+        try {
+            const res = await StockOutAPI(voucherData);
+            if (res.data) {
+                message.success('Đã lưu phiếu xuất thành công!');
+                form.resetFields();
+                itemForm.resetFields();
+                setAddedItems([]);
+                form.setFieldsValue({
+                    voucherCode: `PN${moment().format('YYYYMMDDHHmmss')}`,
+                    dateIn: moment(),
+                });
+            } else {
+                message.error('Lỗi khi lưu phiếu xuất: ' + res);
+            }
+        } catch (error) {
+            message.error('Lỗi khi lưu phiếu xuất: ');
         }
     };
 
     const columns = [
         { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120, ellipsis: true },
         { title: 'Tên Hàng Hóa', dataIndex: 'productName', key: 'productName', ellipsis: true },
-        { title: 'SL Xuất', dataIndex: 'quantity', key: 'quantity', width: 100, align: 'right' },
         { title: 'Tồn Kho (Lúc Thêm)', dataIndex: 'currentStockDisplay', key: 'currentStockDisplay', width: 150, align: 'right' },
+        { title: 'SL Xuất', dataIndex: 'quantity', key: 'quantity', width: 100, align: 'right' },
+
+        {
+            title: 'SL còn lại', dataIndex: 'remainingInventory', key: 'remainingInventory', width: 100, align: 'right',
+            render: (_, record) => (
+                record.currentStockDisplay - record.quantity
+            ),
+        },
+
         { title: 'ĐVT', dataIndex: 'unit', key: 'unit', width: 80, render: (text) => units.find(u => u.id === text)?.name || text },
         { title: 'Nhà Cung Cấp', dataIndex: 'supplierName', key: 'supplierName', ellipsis: true, render: (text) => suppliers.find(s => s.id === text)?.name || text },
         { title: 'Vị Trí Lưu Trữ', dataIndex: 'locationName', key: 'locationName', ellipsis: true, render: (text) => locations.find(l => l.id === text)?.name || text },
@@ -258,14 +281,14 @@ const StockOutScreen = () => {
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12} md={6}>
-                            <Form.Item name="reason" label="Lý Do Xuất">
+                            <Form.Item name="reason" label="Lý Do Xuất" rules={[{ required: true, message: 'Vui lòng chọn lý do xuất!' }]}>
                                 <Input placeholder="VD: Bán hàng, Chuyển kho nội bộ,..." />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12} md={6}>
-                            <Form.Item name="destination" label="Người nhận/Khách hàng">
+                            <Form.Item name="destination" label="Người nhận/Khách hàng" rules={[{ required: true, message: 'Vui lòng chọn người nhận!' }]}>
                                 <Input placeholder="Chọn người nhận/khách hàng" allowClear
-                                    // options={customers.map(c => ({ value: c.id, label: c.name }))}
+                                // options={customers.map(c => ({ value: c.id, label: c.name }))}
                                 />
                             </Form.Item>
                         </Col>
@@ -282,7 +305,7 @@ const StockOutScreen = () => {
                                         placeholder="Nhập hoặc quét mã hàng"
                                         allowClear
                                         // optionFilterProp="label"
-                                        onChange={handleProductCodeChange}
+                                        onPressEnter={handleProductCodeChange}
                                     // filterOption={(input, option) =>
                                     //     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                                     // }
@@ -311,22 +334,17 @@ const StockOutScreen = () => {
                                     label="Số Lượng Xuất"
                                     rules={[
                                         { required: true, message: 'SL xuất không được trống!' },
-                                        ({ getFieldValue }) => ({
-                                            validator(_, value) {
-                                                const productCode = getFieldValue('productCode');
-                                                if (!value || !productCode) {
-                                                    return Promise.resolve();
-                                                }
-                                                const product = products.find(p => p.id === productCode);
-                                                if (product && value > product.currentStock) {
-                                                    return Promise.reject(new Error(`Tối đa: ${product.currentStock}`));
-                                                }
-                                                if (value <= 0) {
-                                                    return Promise.reject(new Error('Phải > 0'));
-                                                }
-                                                return Promise.resolve();
-                                            },
-                                        }),
+                                        // () => ({
+                                        //     validator(_, value) {
+                                        //         if (value > currentStock) {
+                                        //             return Promise.reject(new Error(`Tối đa: ${currentStock}`));
+                                        //         }
+                                        //         if (value <= 0) {
+                                        //             return Promise.reject(new Error('Phải > 0'));
+                                        //         }
+                                        //         return Promise.resolve();
+                                        //     },
+                                        // }),
                                     ]}
                                 >
                                     <InputNumber min={0} style={{ width: '100%' }} placeholder="Nhập SL" />
