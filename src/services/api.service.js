@@ -40,8 +40,8 @@ export const StockOutAPI = (data) => {
     return axios.post(URL_BACKEND, data);
 }
 export const StockCheckAPI = (username, data) => {
-  const URL_BACKEND = `/api/stockcheck/perform?username=${username}`;
-  return axios.post(URL_BACKEND, data);
+    const URL_BACKEND = `/api/stockcheck/perform?username=${username}`;
+    return axios.post(URL_BACKEND, data);
 };
 export const fetchStockCheckByDate = (date) => {
     const URL_BACKEND = `/api/stockcheck/by-date?date=${date}`;
@@ -51,7 +51,7 @@ export const exportStockCheckExcelByDate = async (date) => {
     try {
         const response = await axios.get(`/api/stockcheck/export-excel`, {
             params: { date },
-            responseType: "blob", 
+            responseType: "blob",
         });
 
         const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -225,23 +225,16 @@ export const deleteProductAPI = (id) => {
     return axios.delete(URL_BACKEND)
 }
 
-export const fetchProductById = (code) => {
-    const URL_BACKEND = `/api/products/${code}`
-    return axios.delete(URL_BACKEND)
-}
-
-export const updateProductAPI = async (productId, formData) => {
-    const URL_BACKEND = `api/admin/product/edit/${productId}`
-    try {
-        const response = await axios.put(URL_BACKEND, formData, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
-        });
-        return response.data;
-    } catch (error) {
-        throw error.response?.data || { message: "Lỗi khi gọi API cập nhật sản phẩm" };
+export const updateProductAPI = (productCode, values) => {
+    const URL_BACKEND = `api/products/${productCode}`;
+    const data = {
+        name: values.name,
+        unit: values.unit,
+        productCode: values.productCode,
+        supplierId: values.supplierId
     }
+
+    return axios.put(URL_BACKEND, data);
 }
 
 export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {

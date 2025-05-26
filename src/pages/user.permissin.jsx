@@ -410,7 +410,7 @@ const UserPermissionScreen = () => {
                     bordered
                     size="small"
                     scroll={{ x: 'max-content' }}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{ pageSize: 5 }}
                 />
             </Card>
 

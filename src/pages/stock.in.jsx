@@ -160,7 +160,7 @@ const StockInScreen = () => {
 
     const handleAddSupplier = async (value) => {
         if (!value || value.trim() === "") {
-            message.warn("Vui lòng nhập tên nhà cung cấp để thêm mới.");
+            message.warning("Vui lòng nhập tên nhà cung cấp để thêm mới.");
             return;
         }
         try {

@@ -13,22 +13,12 @@ const ProductDetailModal = ({ visible, onCancel, product }) => {
             destroyOnClose
         >
             <Descriptions bordered column={1}>
-                <Descriptions.Item label="ID">{product.id}</Descriptions.Item>
-                <Descriptions.Item label="Tên sản phẩm">{product.name}</Descriptions.Item>
                 <Descriptions.Item label="Mã sản phẩm">{product.productCode}</Descriptions.Item>
-                <Descriptions.Item label="Giá (VND)">
-                    {product.price?.toLocaleString('vi-VN')}
-                </Descriptions.Item>
+                <Descriptions.Item label="Tên sản phẩm">{product.productName}</Descriptions.Item>
                 <Descriptions.Item label="Số lượng tồn kho">{product.quantity}</Descriptions.Item>
-                <Descriptions.Item label="Trạng thái">
-                    {product.status === 'ACTIVE' ? 'Hoạt động' : 'Ngừng bán'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Ngày tạo">
-                    {new Date(product.createdAt).toLocaleString('vi-VN')}
-                </Descriptions.Item>
-                <Descriptions.Item label="Ngày cập nhật">
-                    {product.updatedAt ? new Date(product.updatedAt).toLocaleString('vi-VN') : 'N/A'}
-                </Descriptions.Item>
+                <Descriptions.Item label="Đơn vị tính">{product.unit}</Descriptions.Item>
+                <Descriptions.Item label="Nhà cung cấp">{product.supplierName}</Descriptions.Item>
+                <Descriptions.Item label="Vị trí lưu trữ">{product.locationName}</Descriptions.Item>
             </Descriptions>
         </Modal>
     );

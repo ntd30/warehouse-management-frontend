@@ -29,6 +29,7 @@ import {
 } from '../services/api.service';
 import axios from '../services/axios.customize';
 import moment from 'moment'; // Thêm moment để xử lý ngày tháng
+import { Link } from 'react-router-dom';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ChartTitle, ChartTooltip, Legend, Filler);
 

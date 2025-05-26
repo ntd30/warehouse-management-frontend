@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Table,
     Button,
@@ -7,18 +7,17 @@ import {
     notification,
     Modal,
     Form,
-    Popconfirm,
     Tooltip,
+    message,
 } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
-    DeleteOutlined,
     EyeOutlined,
 } from '@ant-design/icons';
 import ProductDetailModal from '../components/product/product.detail';
 import ProductForm from '../components/product/product.form';
-import { fetchProductById, fetchProductsPaginationAPI } from '../services/api.service';
+import { fetchProductByCodeAPI, fetchProductsPaginationAPI, updateProductAPI } from '../services/api.service';
 
 // Component chính để quản lý sản phẩm
 const ProductManagement = () => {
@@ -26,7 +25,7 @@ const ProductManagement = () => {
     const [products, setProducts] = useState([]);
     const [total, setTotal] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(5);
     const [loading, setLoading] = useState(false);
 
     // State để quản lý modal và form
@@ -38,26 +37,27 @@ const ProductManagement = () => {
     const [form] = Form.useForm();
 
     // Hàm tải danh sách sản phẩm
-    const loadProducts = useCallback(async (page, size) => {
+    const loadProducts = async (page, size) => {
         setLoading(true);
         const result = await fetchProductsPaginationAPI(page, size);
-        setLoading(false);
 
-        if (result.success) {
+        if (result.data) {
             setProducts(result.data.content || []);
-            setTotal(result.data.total || 0);
+            setTotal(result.data.totalElements || 0);
         } else {
             notification.error({
                 message: 'Lỗi',
                 description: result.message,
             });
         }
-    }, []);
+
+        setLoading(false);
+    };
 
     // Tải danh sách sản phẩm khi trang hoặc kích thước trang thay đổi
     useEffect(() => {
         loadProducts(currentPage, pageSize);
-    }, [currentPage, pageSize, loadProducts]);
+    }, [currentPage, pageSize]);
 
     // Hàm hiển thị modal thêm/sửa
     const showModal = (product = null) => {
@@ -66,9 +66,6 @@ const ProductManagement = () => {
             product || {
                 name: '',
                 productCode: '',
-                price: 0,
-                quantity: 0,
-                status: 'ACTIVE',
             }
         );
         setIsModalVisible(true);
@@ -78,31 +75,38 @@ const ProductManagement = () => {
     const handleFormSubmit = async (values) => {
         setFormLoading(true);
         let result;
+        try {
+            if (editingProduct) {
+                // Cập nhật sản phẩm
+                result = await updateProductAPI(editingProduct.productCode, values);
+            } else {
+                // Thêm sản phẩm mới
+                // result = await createProduct(values);
+            }
 
-        if (editingProduct) {
-            // Cập nhật sản phẩm
-            result = await updateProduct(editingProduct.id, values);
-        } else {
-            // Thêm sản phẩm mới
-            result = await createProduct(values);
-        }
-
-        setFormLoading(false);
-
-        if (result.success) {
-            notification.success({
-                message: editingProduct ? 'Cập nhật thành công' : 'Thêm thành công',
-                description: `Sản phẩm ${values.name} đã được ${editingProduct ? 'cập nhật' : 'thêm'
-                    } thành công!`,
-            });
-            setIsModalVisible(false);
-            form.resetFields();
-            loadProducts(currentPage, pageSize);
-        } else {
-            notification.error({
-                message: 'Lỗi',
-                description: result.message,
-            });
+            if (result.data) {
+                notification.success({
+                    message: editingProduct ? 'Cập nhật thành công' : 'Thêm thành công',
+                    description: `Sản phẩm ${values.name} đã được ${editingProduct ? 'cập nhật' : 'thêm'
+                        } thành công!`,
+                });
+                setIsModalVisible(false);
+                form.resetFields();
+                loadProducts(currentPage, pageSize);
+            } else {
+                notification.error({
+                    message: 'Lỗi',
+                    description: result.message,
+                });
+            }
+        } catch (error) {
+            // notification.error({
+            //     message: 'Lỗi',
+            //     description: result.message,
+            // });
+            message.error("Lỗi hệ thống")
+        } finally {
+            setFormLoading(false);
         }
     };
 
@@ -127,12 +131,11 @@ const ProductManagement = () => {
     // };
 
     // Hàm xem chi tiết sản phẩm
-    const handleViewDetail = async (id) => {
+    const handleViewDetail = async (code) => {
         setLoading(true);
-        const result = await fetchProductById(id);
-        setLoading(false);
+        const result = await fetchProductByCodeAPI(code);
 
-        if (result.success) {
+        if (result.data) {
             setSelectedProduct(result.data);
             setIsDetailModalVisible(true);
         } else {
@@ -141,6 +144,8 @@ const ProductManagement = () => {
                 description: result.message,
             });
         }
+
+        setLoading(false);
     };
 
     // Cấu hình cột cho bảng
@@ -150,38 +155,45 @@ const ProductManagement = () => {
             dataIndex: 'id',
             key: 'id',
             width: 80,
+            hidden: true,
+        },
+        {
+            title: 'SupplierId',
+            dataIndex: 'supplierId',
+            key: 'supplierId',
+            width: 80,
+            hidden: true,
+        },
+        {
+            title: 'Mã sản phẩm',
+            dataIndex: 'productCode',
+            key: 'productCode',
+            width: 80,
         },
         {
             title: 'Tên sản phẩm',
             dataIndex: 'name',
             key: 'name',
             ellipsis: true,
+            width: 250,
         },
         {
-            title: 'Mã sản phẩm',
-            dataIndex: 'productCode',
-            key: 'productCode',
+            title: 'Đơn vị tính',
+            dataIndex: 'unit',
+            key: 'unit',
             width: 120,
         },
         {
-            title: 'Giá (VND)',
-            dataIndex: 'price',
-            key: 'price',
-            width: 120,
-            render: (price) => price?.toLocaleString('vi-VN'),
+            title: 'Tồn kho hiện tại',
+            dataIndex: 'inventory',
+            key: 'inventory',
+            width: 50,
         },
         {
-            title: 'Số lượng',
-            dataIndex: 'quantity',
-            key: 'quantity',
-            width: 100,
-        },
-        {
-            title: 'Trạng thái',
-            dataIndex: 'status',
-            key: 'status',
-            width: 100,
-            render: (status) => (status === 'ACTIVE' ? 'Hoạt động' : 'Ngừng bán'),
+            title: 'Tồn kho tối thiểu',
+            dataIndex: 'minStock',
+            key: 'minStock',
+            width: 50,
         },
         {
             title: 'Thao tác',
@@ -193,7 +205,7 @@ const ProductManagement = () => {
                     <Tooltip title="Xem chi tiết">
                         <Button
                             icon={<EyeOutlined />}
-                            onClick={() => handleViewDetail(record.id)}
+                            onClick={() => handleViewDetail(record.productCode)}
                         />
                     </Tooltip>
                     <Tooltip title="Sửa sản phẩm">
@@ -202,7 +214,7 @@ const ProductManagement = () => {
                             onClick={() => showModal(record)}
                         />
                     </Tooltip>
-                    <Popconfirm
+                    {/* <Popconfirm
                         title="Bạn chắc chắn muốn xóa sản phẩm này?"
                         onConfirm={() => handleDelete(record.id)}
                         okText="Xóa"
@@ -211,11 +223,20 @@ const ProductManagement = () => {
                         <Tooltip title="Xóa sản phẩm">
                             <Button icon={<DeleteOutlined />} danger />
                         </Tooltip>
-                    </Popconfirm>
+                    </Popconfirm> */}
                 </Space>
             ),
         },
     ];
+
+    const onChange = (pagination) => {
+        if (+pagination.current !== +currentPage) {
+            setCurrentPage(+pagination.current);
+        }
+        if (+pagination.pageSize !== +pageSize) {
+            setPageSize(+pagination.pageSize);
+        }
+    };
 
     return (
         <div>
@@ -226,31 +247,34 @@ const ProductManagement = () => {
                     borderRadius: '8px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.09)',
                 }}
-                extra={
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => showModal()}
-                    >
-                        Thêm Sản phẩm
-                    </Button>
-                }
+            // extra={
+            //     <Button
+            //         type="primary"
+            //         icon={<PlusOutlined />}
+            //         onClick={() => showModal()}
+            //     >
+            //         Thêm Sản phẩm
+            //     </Button>
+            // }
             >
                 <Table
                     loading={loading}
                     columns={columns}
                     dataSource={products}
                     rowKey="id"
+                    onChange={onChange}
                     pagination={{
                         current: currentPage,
                         pageSize: pageSize,
+                        showSizeChanger: true,
                         total: total,
-                        onChange: (page, size) => {
-                            setCurrentPage(page);
-                            setPageSize(size);
-                        },
+                        showTotal: (total, range) => (
+                            <div>
+                                {range[0]}-{range[1]} trên {total} rows
+                            </div>
+                        ),
                     }}
-                    scroll={{ x: 'max-content' }}
+                // scroll={{ x: 'max-content' }}
                 />
             </Card>
 

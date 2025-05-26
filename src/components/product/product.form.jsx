@@ -1,7 +1,15 @@
-import { Form, Input, InputNumber, Button, Select } from 'antd';
+import { Form, Input, Button, Select } from 'antd';
 
 // Component tái sử dụng để hiển thị form thêm/sửa sản phẩm
 const ProductForm = ({ form, onFinish, initialValues, loading }) => {
+    const units = [
+        { id: 'Cái', name: 'Cái' },
+        { id: 'Quả', name: 'Quả' },
+        { id: 'Hộp', name: 'Hộp' },
+        { id: 'Thùng', name: 'Thùng' },
+        { id: 'Kg', name: 'Kg' },
+    ];
+
     return (
         <Form
             form={form}
@@ -22,44 +30,28 @@ const ProductForm = ({ form, onFinish, initialValues, loading }) => {
             <Form.Item
                 name="productCode"
                 label="Mã sản phẩm"
-                rules={[{ required: true, message: 'Vui lòng nhập mã sản phẩm!' }]}
+                hidden
             >
                 <Input placeholder="Nhập mã sản phẩm" />
             </Form.Item>
 
+            <Form.Item
+                name="supplierId"
+                label="SupplierId"
+                hidden
+            >
+                <Input />
+            </Form.Item>
+
             {/* Giá sản phẩm */}
             <Form.Item
-                name="price"
-                label="Giá (VND)"
-                rules={[{ required: true, message: 'Vui lòng nhập giá sản phẩm!' }]}
+                name="unit"
+                label="Đơn vị tính"
+                rules={[{ required: true, message: 'Vui lòng nhập đơn vị tính!' }]}
             >
-                <InputNumber
-                    min={0}
-                    style={{ width: '100%' }}
-                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    parser={(value) => value.replace(/\$\s?|(,*)/g, '')}
+                <Select placeholder="Chọn ĐVT" allowClear
+                    options={units.map(u => ({ value: u.id, label: u.name }))}
                 />
-            </Form.Item>
-
-            {/* Số lượng tồn kho */}
-            <Form.Item
-                name="quantity"
-                label="Số lượng tồn kho"
-                rules={[{ required: true, message: 'Vui lòng nhập số lượng tồn kho!' }]}
-            >
-                <InputNumber min={0} style={{ width: '100%' }} />
-            </Form.Item>
-
-            {/* Trạng thái */}
-            <Form.Item
-                name="status"
-                label="Trạng thái"
-                rules={[{ required: true, message: 'Vui lòng chọn trạng thái!' }]}
-            >
-                <Select placeholder="Chọn trạng thái">
-                    <Select.Option value="ACTIVE">Hoạt động</Select.Option>
-                    <Select.Option value="INACTIVE">Ngừng bán</Select.Option>
-                </Select>
             </Form.Item>
 
             {/* Nút submit */}

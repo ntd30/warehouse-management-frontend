@@ -94,7 +94,7 @@ const LayoutAdmin = () => {
                 <Sider theme="light" collapsed={collapsed}>
                     <div className="demo-logo-vertical" />
                     <div style={{ textAlign: 'center' }}>
-                        <img src="/img/logo.jpg" alt="Logo" style={{ width: "100%" }} />
+                        <img src="/img/warehouse_logo.png" alt="Logo" style={{ width: "100%" }} />
                     </div>
                     <Menu
                         mode="inline"
