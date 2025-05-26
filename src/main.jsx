@@ -16,6 +16,7 @@ import StockCheckScreen from './pages/stock.check.jsx';
 import PrivateRoute from './pages/private.route.jsx';
 import ErrorPage from './pages/error.jsx';
 import UserPermissionScreen from './pages/user.permissin.jsx';
+import ProductManagement from './pages/product.jsx';
 
 const router = createBrowserRouter([
   {
@@ -62,6 +63,10 @@ const router = createBrowserRouter([
       {
         path: "permissions",
         element: <UserPermissionScreen />
+      },
+      {
+        path: "products",
+        element: <ProductManagement />
       },
     ]
   },

@@ -1,4 +1,4 @@
-import { Row, Col, Card, Statistic, Typography, Space, Tooltip } from 'antd';
+import { Row, Col, Card, Statistic, Typography, Space, Tooltip, message } from 'antd';
 import {
     BoxPlotOutlined,
     DropboxOutlined,
@@ -8,18 +8,13 @@ import {
     LineChartOutlined,
     SettingOutlined,
     CalendarOutlined,
+    UserOutlined,
 } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { countProductsAPI, countStockAPI, countTotalExportQuantityAPI, countTotalImportQuantityAPI } from '../services/api.service';
 
 const { Title, Text } = Typography;
-
-// Dữ liệu mẫu (bạn sẽ thay thế bằng dữ liệu thực tế từ API)
-const inventoryData = {
-    totalProducts: 1234,
-    totalStock: 15890,
-    stockInThisMonth: 5678,
-    stockOutThisMonth: 4321,
-    lastStockCheck: '10/05/2025',
-};
 
 // Dữ liệu mẫu cho biểu đồ (chỉ để minh họa)
 const chartData = [
@@ -31,7 +26,20 @@ const chartData = [
 ];
 
 const DashboardPage = () => {
+    const [totalProducts, setTotalProducts] = useState(0);
+    const [totalStock, setTotalStock] = useState(0);
+    const [totalImportQuantity, setTotalImportQuantity] = useState(0);
+    const [totalExportQuantity, setTotalExportQuantity] = useState(0);
     const currentMonthYear = "Tháng 5, 2025"; // Có thể tạo động
+
+    // Dữ liệu mẫu (bạn sẽ thay thế bằng dữ liệu thực tế từ API)
+    const inventoryData = {
+        totalProducts: totalProducts,
+        totalStock: totalStock,
+        stockInThisMonth: totalImportQuantity,
+        stockOutThisMonth: totalExportQuantity,
+        lastStockCheck: '10/05/2025',
+    };
 
     const statCards = [
         {
@@ -51,7 +59,7 @@ const DashboardPage = () => {
             tooltip: 'Tổng đơn vị hàng hóa',
         },
         {
-            title: 'SL nhập trong tháng',
+            title: 'Tổng SL nhập',
             value: inventoryData.stockInThisMonth,
             icon: <LoginOutlined style={{ fontSize: '24px', color: '#722ed1' }} />,
             precision: 0,
@@ -59,28 +67,29 @@ const DashboardPage = () => {
             tooltip: 'Tính đến hiện tại',
         },
         {
-            title: 'SL xuất trong tháng',
+            title: 'Tổng SL xuất',
             value: inventoryData.stockOutThisMonth,
             icon: <LogoutOutlined style={{ fontSize: '24px', color: '#faad14' }} />,
             precision: 0,
             suffix: 'đơn vị',
             tooltip: 'Tính đến hiện tại',
         },
-        {
-            title: 'Kiểm kho gần nhất',
-            value: inventoryData.lastStockCheck,
-            icon: <CalendarOutlined style={{ fontSize: '24px', color: '#f5222d' }} />,
-            isDate: true, // Đánh dấu để không hiển thị như số
-            tooltip: 'Ngày hoàn thành kiểm kê',
-        },
+        // {
+        //     title: 'Kiểm kho gần nhất',
+        //     value: inventoryData.lastStockCheck,
+        //     icon: <CalendarOutlined style={{ fontSize: '24px', color: '#f5222d' }} />,
+        //     isDate: true, // Đánh dấu để không hiển thị như số
+        //     tooltip: 'Ngày hoàn thành kiểm kê',
+        // },
     ];
 
     const taskCards = [
-        { title: 'Quản lý Nhập Kho', icon: <LoginOutlined />, description: 'Tạo phiếu nhập, xem lịch sử', link: '#' },
-        { title: 'Quản lý Xuất Kho', icon: <LogoutOutlined />, description: 'Tạo phiếu xuất, xem lịch sử', link: '#' },
-        { title: 'Quản lý Kiểm Kê', icon: <CarryOutOutlined />, description: 'Tạo phiếu, đối chiếu số liệu', link: '#' },
-        { title: 'Quản lý Báo Cáo', icon: <LineChartOutlined />, description: 'Báo cáo tồn kho, NXT', link: '#' },
-        { title: 'Cài Đặt', icon: <SettingOutlined />, description: 'Sản phẩm, kho, người dùng', link: '#' },
+        { title: 'Quản lý Nhập Kho', icon: <LoginOutlined />, description: 'Tạo phiếu nhập, xem lịch sử', link: '/stock-in' },
+        { title: 'Quản lý Xuất Kho', icon: <LogoutOutlined />, description: 'Tạo phiếu xuất, xem lịch sử', link: '/stock-out' },
+        { title: 'Quản lý Kiểm Kê', icon: <CarryOutOutlined />, description: 'Tạo phiếu, đối chiếu số liệu', link: '/stock-check' },
+        { title: 'Quản lý Báo Cáo', icon: <LineChartOutlined />, description: 'Báo cáo tồn kho', link: '/reports' },
+        { title: 'Quản lý Quyền Hạn', icon: <UserOutlined />, description: 'Người dùng, phân quyền', link: '/permissions' },
+        { title: 'Cài Đặt', icon: <SettingOutlined />, description: 'Sản phẩm, kho', link: '/settings' },
     ];
 
     // Placeholder cho biểu đồ SVG (tương tự như bản HTML)
@@ -101,6 +110,49 @@ const DashboardPage = () => {
             ))}
         </svg>
     );
+
+    useEffect(() => {
+        const countProducts = async () => {
+            try {
+                const res = await countProductsAPI();
+                setTotalProducts(res.data);
+            } catch (error) {
+                message.error("Lỗi khi lấy số lượng sản phẩm");
+            }
+        }
+
+        const countStock = async () => {
+            try {
+                const res = await countStockAPI();
+                setTotalStock(res.data);
+            } catch (error) {
+                message.error("Lỗi khi lấy số lượng sản phẩm");
+            }
+        }
+
+        const countTotalImportQuantity = async () => {
+            try {
+                const res = await countTotalImportQuantityAPI();
+                setTotalImportQuantity(res.data);
+            } catch (error) {
+                message.error("Lỗi khi lấy số lượng sản phẩm");
+            }
+        }
+
+        const countTotalExportQuantity = async () => {
+            try {
+                const res = await countTotalExportQuantityAPI();
+                setTotalExportQuantity(res.data);
+            } catch (error) {
+                message.error("Lỗi khi lấy số lượng sản phẩm");
+            }
+        }
+
+        countProducts();
+        countStock();
+        countTotalImportQuantity();
+        countTotalExportQuantity();
+    }, [])
 
     return (
         <div style={{ background: '#fff', padding: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
@@ -144,13 +196,13 @@ const DashboardPage = () => {
             <Row gutter={[16, 16]}>
                 {taskCards.map((task, index) => (
                     <Col xs={24} sm={12} md={12} lg={8} xl={24 / taskCards.length} key={index}>
-                        <a href={task.link} style={{ textDecoration: 'none' }}>
+                        <Link to={task.link} style={{ textDecoration: 'none' }}>
                             <Card hoverable bordered={false} style={{ textAlign: 'center', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                                 <div style={{ fontSize: '32px', color: '#1890ff', marginBottom: '12px' }}>{task.icon}</div>
                                 <Title level={5}>{task.title}</Title>
                                 <Text type="secondary">{task.description}</Text>
                             </Card>
-                        </a>
+                        </Link>
                     </Col>
                 ))}
             </Row>

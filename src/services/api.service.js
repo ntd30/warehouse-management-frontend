@@ -71,13 +71,13 @@ export const fetchAllPermissionsAPI = (current, pageSize) => {
 }
 
 export const fetchAllRolesAPI = (current, pageSize) => {
-    const URL_BACKEND = `/api/admin/roles?page=${current}&size=${pageSize}`
+    const URL_BACKEND = `/api/admin/roles?page=${current - 1}&size=${pageSize}`
     return axios.get(URL_BACKEND)
 }
 
 export const createUpdateRoleAPI = async (id, { name, description }) => {
     const URL_BACKEND = '/api/admin/roles';
-    const data = { name, description };
+    const data = { name, description, active: true };
     if (id) {
         // Cập nhật vai trò
         return axios.put(`${URL_BACKEND}/${id}`, data);
@@ -96,6 +96,20 @@ export const ganNhieuQuyenChoVaiTro = (roleId, permissionIds) => {
     return axios.post(URL_BACKEND, data)
 }
 
+export const goNhieuQuyenChoVaiTro = (roleId, permissionIds) => {
+    const URL_BACKEND = `/api/admin/permissions/revoke`
+    const data = {
+        roleId: roleId,
+        permissionIds: permissionIds
+    }
+    return axios.delete(URL_BACKEND, {
+        data: data,
+        headers: {
+            "Content-Type": "application/json"
+        }
+    })
+}
+
 export const deleteRoleAPI = (id) => {
     const URL_BACKEND = `/api/admin/roles/${id}`;
     return axios.delete(URL_BACKEND);
@@ -105,6 +119,92 @@ export const fetchAllUsersAPI = (current, pageSize) => {
     const URL_BACKEND = `/api/admin/users?page=${current}&size=${pageSize}&sort=id,desc`;
     return axios.get(URL_BACKEND);
 };
+
+export const createUserAPI = (username, email, password, fullName, isActive, roleId) => {
+    const URL_BACKEND = "/api/admin/users"
+    const data = {
+        username: username,
+        email: email,
+        password: password,
+        fullName: fullName,
+        isActive: isActive,
+        roleId: roleId,
+        address: '',
+        phoneNumber: ''
+    }
+    return axios.post(URL_BACKEND, data)
+}
+
+export const updateUserAPI = (id, fullName, isActive, roleId) => {
+    const URL_BACKEND = `/api/admin/users/${id}`
+    const data = {
+        fullName: fullName,
+        isActive: isActive,
+        roleId: roleId,
+        address: '',
+        phoneNumber: '',
+    }
+    return axios.put(URL_BACKEND, data)
+}
+
+export const deleteUserAPI = (id) => {
+    const URL_BACKEND = `/api/admin/users/${id}`
+    return axios.delete(URL_BACKEND)
+}
+
+export const countProductsAPI = () => {
+    const URL_BACKEND = `/api/products/count`;
+    return axios.get(URL_BACKEND);
+};
+
+export const countStockAPI = () => {
+    const URL_BACKEND = `/api/inventories/count`;
+    return axios.get(URL_BACKEND);
+};
+
+export const countTotalImportQuantityAPI = () => {
+    const URL_BACKEND = `/api/stock-in/count`;
+    return axios.get(URL_BACKEND);
+};
+
+export const countTotalExportQuantityAPI = () => {
+    const URL_BACKEND = `/api/stock-out/count`;
+    return axios.get(URL_BACKEND);
+};
+
+export const fetchProductsPaginationAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/products?page=${current}&size=${pageSize}&sort=createdAt,desc`
+    return axios.get(URL_BACKEND)
+}
+
+export const createProductAPI = (formData) => {
+    const URL_BACKEND = "api/products/create";
+    return axios.post(URL_BACKEND, formData);
+};
+
+export const deleteProductAPI = (id) => {
+    const URL_BACKEND = `/api/products/${id}`
+    return axios.delete(URL_BACKEND)
+}
+
+export const fetchProductById = (code) => {
+    const URL_BACKEND = `/api/products/${code}`
+    return axios.delete(URL_BACKEND)
+}
+
+export const updateProductAPI = async (productId, formData) => {
+    const URL_BACKEND = `api/admin/product/edit/${productId}`
+    try {
+        const response = await axios.put(URL_BACKEND, formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || { message: "Lỗi khi gọi API cập nhật sản phẩm" };
+    }
+}
 
 export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {
     try {
@@ -217,8 +317,6 @@ export const fetchLowStockAlertEmailsAPI = async () => {
         throw error;
     }
 };
-
-
 
 
 export const fetchAllProductsAPI = async () => {

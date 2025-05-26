@@ -1,4 +1,5 @@
 import {
+    AntDesignOutlined,
     ApiOutlined,
     AppstoreOutlined, CheckSquareOutlined, EditOutlined,
     LoginOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SettingOutlined
@@ -14,6 +15,11 @@ const menuItems = [
         label: <Link to=''>Dashboard</Link>,
         key: '',
         icon: <AppstoreOutlined />
+    },
+    {
+        label: <Link to='/products'>Sản phẩm</Link>,
+        key: '/products',
+        icon: <AntDesignOutlined />
     },
     {
         label: <Link to='/stock-in'>Nhập kho</Link>,

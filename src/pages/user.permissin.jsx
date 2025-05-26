@@ -23,43 +23,14 @@ import {
     EditOutlined,
     DeleteOutlined,
 } from '@ant-design/icons';
-import { createUpdateRoleAPI, deleteRoleAPI, fetchAllPermissionsAPI, fetchAllRolesAPI, fetchAllUsersAPI, ganNhieuQuyenChoVaiTro } from '../services/api.service';
-
-// --- Dữ liệu mẫu ---
-const initialPermissions = [
-    { id: 'perm1', name: 'Xem Dashboard', description: 'Quyền xem trang tổng quan' },
-    { id: 'perm2', name: 'Quản lý Nhập Kho', description: 'Quyền tạo và quản lý phiếu nhập' },
-    { id: 'perm3', name: 'Quản lý Xuất Kho', description: 'Quyền tạo và quản lý phiếu xuất' },
-    { id: 'perm4', name: 'Quản lý Kiểm Kê', description: 'Quyền thực hiện kiểm kê kho' },
-    { id: 'perm5', name: 'Xem Báo Cáo', description: 'Quyền xem các loại báo cáo' },
-    { id: 'perm6', name: 'Quản lý Người Dùng', description: 'Quyền thêm, sửa, xóa người dùng' },
-    { id: 'perm7', name: 'Quản lý Vai Trò & Quyền Hạn', description: 'Quyền quản lý vai trò và gán quyền' },
-    { id: 'perm8', name: 'Quản lý Quy Tắc Nghiệp Vụ', description: 'Quyền thiết lập quy tắc kho' },
-];
-
-const initialRoles = [
-    { id: 'role_admin', name: 'Quản Trị Viên', description: 'Toàn quyền quản trị hệ thống', permissions: initialPermissions.map(p => p.id) },
-    { id: 'role_staff', name: 'Nhân Viên Kho', description: 'Quyền thực hiện các nghiệp vụ kho cơ bản', permissions: ['perm1', 'perm2', 'perm3', 'perm4'] },
-    { id: 'role_viewer', name: 'Người Xem', description: 'Chỉ có quyền xem thông tin', permissions: ['perm1', 'perm5'] },
-];
-
-const initialUsers = [
-    { id: 'user1', username: 'admin', fullName: 'Quản Trị Viên Chính', email: 'admin@example.com', roleId: 'role_admin', isActive: true },
-    { id: 'user2', username: 'nvkho01', fullName: 'Nhân Viên Kho A', email: 'nvkho01@example.com', roleId: 'role_staff', isActive: true },
-    { id: 'user3', username: 'viewer01', fullName: 'Người Xem Báo Cáo', email: 'viewer01@example.com', roleId: 'role_viewer', isActive: false },
-];
-// --- Kết thúc dữ liệu mẫu ---
+import { createUpdateRoleAPI, createUserAPI, deleteRoleAPI, deleteUserAPI, fetchAllPermissionsAPI, fetchAllRolesAPI, fetchAllUsersAPI, ganNhieuQuyenChoVaiTro, goNhieuQuyenChoVaiTro, updateUserAPI } from '../services/api.service';
 
 const UserPermissionScreen = () => {
     const [loadingTable, setLoadingTable] = useState(false);
     const [loadingBtn, setLoadingBtn] = useState(false);
 
     // Permission State
-    const [permissions, setPermissions] = useState(initialPermissions);
-    // const [isPermissionModalVisible, setIsPermissionModalVisible] = useState(false);
-    // const [editingPermission, setEditingPermission] = useState(null);
-    // const [permissionForm] = Form.useForm();
-
+    const [permissions, setPermissions] = useState([]);
     // Role State
     const [roles, setRoles] = useState([]);
     const [currentRole, setCurrentRole] = useState(1);
@@ -70,7 +41,7 @@ const UserPermissionScreen = () => {
     const [roleForm] = Form.useForm();
 
     // User Management State
-    const [users, setUsers] = useState(initialUsers);
+    const [users, setUsers] = useState([]);
     const [currentUser, setCurrentUser] = useState(1);
     const [pageSizeUser, setPageSizeUser] = useState(5);
     const [totalUser, setTotalUser] = useState(0);
@@ -85,15 +56,15 @@ const UserPermissionScreen = () => {
     useEffect(() => {
         loadRoles();
     }, [currentRole, pageSizeRole]);
-    // useEffect(() => {
-    //     loadUsers();
-    // }, [currentUser, pageSizeUser]);
+    useEffect(() => {
+        loadUsers();
+    }, [currentUser, pageSizeUser]);
 
     // Permission Functions
     const loadPermissions = async () => {
         setLoadingTable(true);
         try {
-            const res = await fetchAllPermissionsAPI(1, 200); // Lấy tất cả permissions với pageSize lớn
+            const res = await fetchAllPermissionsAPI(1, 200);
             if (res?.data?.content && Array.isArray(res.data.content)) {
                 setPermissions(res.data.content);
             } else {
@@ -114,17 +85,11 @@ const UserPermissionScreen = () => {
         }
     };
 
-    // const showPermissionModal = (permission = null) => {
-    //     setEditingPermission(permission);
-    //     permissionForm.setFieldsValue(permission || { name: '', description: '' });
-    //     setIsPermissionModalVisible(true);
-    // };
-
     // Role Functions
     const loadRoles = async () => {
         setLoadingTable(true);
         try {
-            const res = await fetchAllRolesAPI(currentRole, pageSizeRole); // Lấy tất cả roles với pageSize lớn
+            const res = await fetchAllRolesAPI(currentRole, pageSizeRole);
             if (res?.data?.content && Array.isArray(res.data.content)) {
                 setRoles(res.data.content);
             } else {
@@ -147,24 +112,78 @@ const UserPermissionScreen = () => {
 
     const showRoleModal = (role = null) => {
         setEditingRole(role);
-        roleForm.setFieldsValue(role ? { ...role, permissions: role.permissions || [] } : { name: '', description: '', permissions: [] });
+        const formattedPermissions = role?.permissions
+            ? (Array.isArray(role.permissions) && typeof role.permissions[0] === 'object'
+                ? role.permissions.map(perm => perm.id)
+                : role.permissions)
+            : [];
+        roleForm.setFieldsValue({
+            ...role,
+            permissions: formattedPermissions,
+        });
         setIsRoleModalVisible(true);
     };
 
     const handleRoleModalOk = async (values) => {
         try {
-            setLoadingBtn(true); // Giả định setLoadingBtn đã được định nghĩa trong state
+            setLoadingBtn(true);
 
             const { name, description, permissions } = values;
-            const roleData = { name, description, permissions };
+            const roleData = { name, description };
 
             if (editingRole) {
-                setRoles(roles.map(r => r.id === editingRole.id ? { ...r, ...values } : r));
-                message.success('Cập nhật vai trò thành công!');
+                // Cập nhật vai trò
+                const res = await createUpdateRoleAPI(editingRole.id, roleData);
+                if (!res.data) {
+                    notification.error({
+                        message: 'Lỗi Cập nhật Vai Trò',
+                        description: JSON.stringify(res.message) || 'Đã xảy ra lỗi khi cập nhật vai trò',
+                    });
+                    return;
+                }
+
+                // Lấy quyền hiện tại của vai trò
+                const currentPermissions = editingRole.permissions || [];
+                const formattedCurrentPermissions = Array.isArray(currentPermissions) && typeof currentPermissions[0] === 'object'
+                    ? currentPermissions.map(perm => perm.id)
+                    : currentPermissions;
+
+                // Tính toán quyền cần gán và gỡ
+                const permissionsToAssign = permissions.filter(id => !formattedCurrentPermissions.includes(id)); // Quyền mới
+                const permissionsToRevoke = formattedCurrentPermissions.filter(id => !permissions.includes(id)); // Quyền bị gỡ
+
+                // Gán quyền mới
+                if (permissionsToAssign.length > 0) {
+                    const resAssign = await ganNhieuQuyenChoVaiTro(editingRole.id, permissionsToAssign);
+                    if (!resAssign) {
+                        notification.error({
+                            message: "Lỗi gán quyền cho Vai trò",
+                            description: JSON.stringify(resAssign),
+                        });
+                        return;
+                    }
+                }
+
+                // Gỡ quyền không còn được chọn
+                if (permissionsToRevoke.length > 0) {
+                    const resRevoke = await goNhieuQuyenChoVaiTro(editingRole.id, permissionsToRevoke);
+                    if (!resRevoke) {
+                        notification.error({
+                            message: "Lỗi gỡ quyền cho Vai trò",
+                            description: JSON.stringify(resRevoke),
+                        });
+                        return;
+                    }
+                }
+
+                await loadRoles();
+                notification.success({
+                    message: "Cập nhật Vai trò",
+                    description: "Cập nhật Vai trò thành công",
+                });
             } else {
                 // Thêm mới vai trò
                 const res = await createUpdateRoleAPI(null, roleData);
-
                 if (!res.data) {
                     notification.error({
                         message: 'Lỗi Thêm Vai Trò',
@@ -175,20 +194,19 @@ const UserPermissionScreen = () => {
 
                 const id = res.data.id;
                 const resAssignPermissions = await ganNhieuQuyenChoVaiTro(id, permissions);
-
                 if (!resAssignPermissions) {
                     notification.error({
                         message: "Lỗi thêm mới Vai trò",
-                        description: JSON.stringify(resAssignPermissions)
-                    })
+                        description: JSON.stringify(resAssignPermissions),
+                    });
                     return;
                 }
 
                 await loadRoles();
                 notification.success({
                     message: "Thêm Vai trò",
-                    description: "Thêm Vai trò mới thành công"
-                })
+                    description: "Thêm Vai trò mới thành công",
+                });
             }
             setIsRoleModalVisible(false);
             roleForm.resetFields();
@@ -198,7 +216,7 @@ const UserPermissionScreen = () => {
                 description: error.response?.data?.message || error.message || 'Đã xảy ra lỗi khi xử lý yêu cầu',
             });
         } finally {
-            setLoadingBtn(false); // Tắt loading sau khi hoàn thành
+            setLoadingBtn(false);
         }
     };
 
@@ -249,38 +267,88 @@ const UserPermissionScreen = () => {
 
     const showUserModal = (user = null) => {
         setEditingUser(user);
-        userForm.setFieldsValue(user ? { ...user } : { username: '', fullName: '', email: '', roleId: undefined, isActive: true });
+        userForm.setFieldsValue(user ? { ...user, isActive: user?.active } : { username: '', fullName: '', email: '', roleId: undefined, isActive: true });
         setIsUserModalVisible(true);
     };
 
-    const handleUserModalOk = () => {
-        userForm.validateFields()
-            .then(values => {
-                if (editingUser) {
-                    setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...values } : u));
-                    message.success('Cập nhật người dùng thành công!');
-                } else {
-                    const newUser = { id: `user${Date.now()}`, ...values };
-                    setUsers([...users, newUser]);
-                    message.success('Thêm người dùng thành công!');
-                }
-                setIsUserModalVisible(false);
-                userForm.resetFields();
-            })
-            .catch(info => console.log('Validate Failed:', info));
-    };
+    const handleUserModalOk = async (values) => {
+        try {
+            setLoadingBtn(true)
 
-    const handleDeleteUser = (userId) => {
-        setUsers(users.filter(u => u.id !== userId));
-        message.success('Xóa người dùng thành công!');
+            const { id, username, email, password, fullName, isActive, roleId } = values
+
+            if (editingUser) {
+                const resUpdateUser = await updateUserAPI(
+                    id, fullName, isActive, roleId
+                )
+
+                if (resUpdateUser.data) {
+                    await loadUsers()
+                    setIsUserModalVisible(false);
+                    roleForm.resetFields();
+                    notification.success({
+                        message: "Cập nhật người dùng",
+                        description: "Cập nhật người dùng mới thành công"
+                    })
+                } else {
+                    notification.error({
+                        message: "Lỗi Cập nhật mới người dùng",
+                        description: JSON.stringify(resUpdateUser)
+                    })
+                }
+            } else {
+                const resCreateUser = await createUserAPI(
+                    username, email, password, fullName, isActive, roleId
+                )
+
+                if (resCreateUser.data) {
+                    await loadUsers()
+                    setIsUserModalVisible(false);
+                    roleForm.resetFields();
+                    notification.success({
+                        message: "Thêm người dùng",
+                        description: "Thêm người dùng mới thành công"
+                    })
+                } else {
+                    notification.error({
+                        message: "Lỗi thêm mới người dùng",
+                        description: JSON.stringify(resCreateUser)
+                    })
+                }
+            }
+
+        } catch (error) {
+            notification.error({
+                message: 'Lỗi Hệ Thống',
+                description: error.response?.data?.message || error.message || 'Đã xảy ra lỗi khi xử lý yêu cầu',
+            });
+        } finally {
+            setLoadingBtn(false);
+        }
+    }
+
+    const handleDeleteUser = async (idDelete) => {
+        const res = await deleteUserAPI(idDelete);
+        if (res.data) {
+            notification.success({
+                message: "Xóa người dùng",
+                description: "Xóa người dùng thành công!",
+            });
+            await loadUsers();
+        } else {
+            notification.error({
+                message: "Lỗi khi xóa người dùng",
+                description: JSON.stringify(res.message),
+            });
+        }
     };
 
     // Columns definitions
     const roleColumns = [
-        { title: 'ID Vai Trò', dataIndex: 'id', key: 'id', width: 150 },
+        { title: 'ID Vai Trò', dataIndex: 'id', key: 'id', width: 150, hidden: true },
         { title: 'Tên Vai Trò', dataIndex: 'name', key: 'name', width: 200, ellipsis: true },
         { title: 'Mô tả', dataIndex: 'description', key: 'description', ellipsis: true },
-        { title: 'Số Quyền Hạn', dataIndex: 'permissions', key: 'permissionsCount', width: 120, align: 'center', render: () => permissions?.length || 0 },
+        { title: 'Số Quyền Hạn', dataIndex: 'permissions', key: 'permissionsCount', width: 120, align: 'center', render: (record) => record?.length || 0 },
         {
             title: 'Thao Tác',
             key: 'action',
@@ -301,8 +369,8 @@ const UserPermissionScreen = () => {
         { title: 'Tên đăng nhập', dataIndex: 'username', key: 'username', width: 150 },
         { title: 'Họ và Tên', dataIndex: 'fullName', key: 'fullName', width: 200, ellipsis: true },
         { title: 'Email', dataIndex: 'email', key: 'email', width: 200, ellipsis: true },
-        { title: 'Vai trò', dataIndex: 'roleId', key: 'roleId', width: 180, render: roleId => roles.find(r => r.id === roleId)?.name || roleId },
-        { title: 'Trạng thái', dataIndex: 'isActive', key: 'isActive', width: 100, render: isActive => isActive ? <Tag color="green">Hoạt động</Tag> : <Tag color="red">Khóa</Tag> },
+        { title: 'Vai trò', dataIndex: 'roleName', key: 'roleName', width: 180 },
+        { title: 'Trạng thái', dataIndex: 'active', key: 'active', width: 100, render: active => active ? <Tag color="green">Hoạt động</Tag> : <Tag color="red">Khóa</Tag> },
         {
             title: 'Thao Tác',
             key: 'action',
@@ -387,20 +455,23 @@ const UserPermissionScreen = () => {
             <Modal
                 title={editingUser ? "Sửa Thông Tin Người Dùng" : "Thêm Người Dùng Mới"}
                 open={isUserModalVisible}
-                onOk={handleUserModalOk}
+                onOk={() => userForm.submit()}
                 onCancel={() => { setIsUserModalVisible(false); userForm.resetFields(); }}
                 okText={editingUser ? "Cập nhật" : "Thêm mới"}
                 cancelText="Hủy"
                 destroyOnClose
             >
-                <Form form={userForm} layout="vertical">
+                <Form form={userForm} layout="vertical" onFinish={handleUserModalOk}>
+                    <Form.Item name="id" label="Id" hidden>
+                        <Input />
+                    </Form.Item>
                     <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập!' }]}>
                         <Input disabled={!!editingUser} />
                     </Form.Item>
-                    <Form.Item name="fullName" label="Họ và Tên" rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}>
-                        <Input />
-                    </Form.Item>
                     <Form.Item name="email" label="Email" rules={[{ required: true, message: 'Vui lòng nhập email!' }, { type: 'email', message: 'Email không hợp lệ!' }]}>
+                        <Input disabled={!!editingUser} />
+                    </Form.Item>
+                    <Form.Item name="fullName" label="Họ và Tên" rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}>
                         <Input />
                     </Form.Item>
                     {!editingUser && (
@@ -411,13 +482,14 @@ const UserPermissionScreen = () => {
                     <Form.Item name="roleId" label="Vai trò" rules={[{ required: true, message: 'Vui lòng chọn vai trò!' }]}>
                         <Select options={roles.map(r => ({ value: r.id, label: r.name }))} placeholder="Chọn vai trò cho người dùng" />
                     </Form.Item>
-                    <Form.Item name="isActive" label="Trạng thái" valuePropName="checked" initialValue={true}>
+                    <Form.Item name="isActive" label="Trạng thái" valuePropName="checked">
                         <Checkbox>Kích hoạt tài khoản</Checkbox>
                     </Form.Item>
                 </Form>
             </Modal>
         </div>
     );
+
 };
 
 export default UserPermissionScreen;
