@@ -163,3 +163,87 @@ export const fetchDemandForecastAPI = async (productCode) => {
         throw error;
     }
 };
+
+export const fetchAllSettingsAPI = async () => {
+    try {
+        const response = await axios.get('/api/settings/list');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const createSettingAPI = async (key, value, description) => {
+    try {
+        const response = await axios.post('/api/settings/create', { key, value, description });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const updateSettingAPI = async (key, value, description) => {
+    try {
+        const response = await axios.put('/api/settings/update', { key, value, description });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const deleteSettingAPI = async (key) => {
+    try {
+        const response = await axios.delete('/api/settings/delete', { params: { key } });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const fetchLowStockAlertEnabledAPI = async () => {
+    try {
+        const response = await axios.get('/api/settings/low-stock-alert-enabled');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const fetchLowStockAlertEmailsAPI = async () => {
+    try {
+        const response = await axios.get('/api/settings/low-stock-alert-emails');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
+
+export const fetchAllProductsAPI = async () => {
+    try {
+        const response = await axios.get('/api/products');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const updateMinStockAPI = async (productCode, minStock) => {
+    try {
+        const response = await axios.put(`/api/products/${productCode}`, { minStock });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const updateBatchMinStockAPI = async (updates) => {
+    try {
+        const response = await axios.put('/api/products/min-stock/batch', updates);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
