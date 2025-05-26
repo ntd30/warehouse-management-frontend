@@ -1,4 +1,5 @@
-import { Row, Col, Card, Statistic, Typography, Space, Tooltip, message } from 'antd';
+import { useEffect, useState } from 'react';
+import { Row, Col, Card, Statistic, Typography, Space, Tooltip, Spin, Select, Button, DatePicker } from 'antd';
 import {
     BoxPlotOutlined,
     DropboxOutlined,
@@ -10,188 +11,270 @@ import {
     CalendarOutlined,
     UserOutlined,
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { countProductsAPI, countStockAPI, countTotalExportQuantityAPI, countTotalImportQuantityAPI } from '../services/api.service';
+import { Line } from 'react-chartjs-2';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title as ChartTitle,
+    Tooltip as ChartTooltip,
+    Legend,
+    Filler,
+} from 'chart.js';
+import {
+    fetchWarehouseReportAPI,
+    fetchProductReportAPI,
+} from '../services/api.service';
+import axios from '../services/axios.customize';
+import moment from 'moment'; // Thêm moment để xử lý ngày tháng
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ChartTitle, ChartTooltip, Legend, Filler);
 
 const { Title, Text } = Typography;
 
-// Dữ liệu mẫu cho biểu đồ (chỉ để minh họa)
-const chartData = [
-    { day: '1', value: 150 }, { day: '2', value: 120 }, { day: '3', value: 130 },
-    { day: '4', value: 100 }, { day: '5', value: 80 }, { day: '6', value: 90 },
-    { day: '7', value: 60 }, { day: '8', value: 70 }, { day: '9', value: 50 },
-    { day: '10', value: 65 }, { day: '11', value: 40 }, { day: '12', value: 50 },
-    // ... thêm dữ liệu cho các ngày còn lại
-];
-
 const DashboardPage = () => {
-    const [totalProducts, setTotalProducts] = useState(0);
-    const [totalStock, setTotalStock] = useState(0);
-    const [totalImportQuantity, setTotalImportQuantity] = useState(0);
-    const [totalExportQuantity, setTotalExportQuantity] = useState(0);
-    const currentMonthYear = "Tháng 5, 2025"; // Có thể tạo động
+    const [inventoryData, setInventoryData] = useState({
+        totalProducts: 0,
+        totalStock: 0,
+        stockInThisMonth: 0,
+        stockOutThisMonth: 0,
+        lastStockCheck: 'N/A',
+    });
+    const [chartData, setChartData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [timeRange, setTimeRange] = useState('month');
+    const [selectedDate, setSelectedDate] = useState(null); // Lưu ngày hoặc tuần được chọn
+    const currentMonthYear = new Date().toLocaleString('vi-VN', { month: 'long', year: 'numeric' });
 
-    // Dữ liệu mẫu (bạn sẽ thay thế bằng dữ liệu thực tế từ API)
-    const inventoryData = {
-        totalProducts: totalProducts,
-        totalStock: totalStock,
-        stockInThisMonth: totalImportQuantity,
-        stockOutThisMonth: totalExportQuantity,
-        lastStockCheck: '10/05/2025',
-    };
+    useEffect(() => {
+        const fetchData = async () => {
+            console.log('[DashboardPage] Starting fetchData with timeRange:', timeRange, 'selectedDate:', selectedDate);
+            setLoading(true);
+            console.log('[DashboardPage] Set loading to true');
+
+            try {
+                let startDate, endDate;
+                const today = new Date();
+                endDate = today.toISOString().split('T')[0] + 'T23:59:59';
+
+                if (timeRange === 'custom' && selectedDate) {
+                    // Xử lý khi chọn ngày hoặc tuần cụ thể
+                    if (selectedDate.isWeek) {
+                        // Nếu chọn tuần
+                        startDate = moment(selectedDate.date).startOf('week').toISOString().split('T')[0] + 'T00:00:00';
+                        endDate = moment(selectedDate.date).endOf('week').toISOString().split('T')[0] + 'T23:59:59';
+                    } else {
+                        // Nếu chọn ngày
+                        startDate = moment(selectedDate.date).toISOString().split('T')[0] + 'T00:00:00';
+                        endDate = moment(selectedDate.date).toISOString().split('T')[0] + 'T23:59:59';
+                    }
+                } else {
+                    // Xử lý các khoảng thời gian mặc định
+                    if (timeRange === 'month') {
+                        startDate = new Date(today.setMonth(today.getMonth() - 1)).toISOString().split('T')[0] + 'T00:00:00';
+                    } else if (timeRange === 'week') {
+                        startDate = new Date(today.setDate(today.getDate() - 7)).toISOString().split('T')[0] + 'T00:00:00';
+                    } else {
+                        startDate = new Date(today.setDate(today.getDate() - 1)).toISOString().split('T')[0] + 'T00:00:00';
+                    }
+                }
+                console.log('[DashboardPage] Calculated date range:', { startDate, endDate });
+
+                const countResponse = await axios.get('/api/products/count');
+                console.log('[DashboardPage] Response from /api/products/count:', countResponse.data);
+                const totalProducts = countResponse.data || 0;
+
+                const warehouseResponse = await fetchWarehouseReportAPI(startDate, endDate, timeRange);
+                console.log('[DashboardPage] Response from /api/reports/warehouse:', warehouseResponse.data);
+                const warehouseData = warehouseResponse.data || [];
+                const totalStock = warehouseData.reduce((sum, item) => sum + (item.closingStock || 0), 0);
+                const stockInThisMonth = warehouseData.reduce((sum, item) => sum + (item.totalIn || 0), 0);
+                const stockOutThisMonth = warehouseData.reduce((sum, item) => sum + (item.totalOut || 0), 0);
+                const lastStockCheck = warehouseData.length > 0 ? new Date().toISOString().split('T')[0] : 'N/A';
+                console.log('[DashboardPage] Processed warehouse data:', {
+                    totalStock,
+                    stockInThisMonth,
+                    stockOutThisMonth,
+                    lastStockCheck,
+                    rawData: warehouseData,
+                });
+
+                const newInventoryData = {
+                    totalProducts,
+                    totalStock,
+                    stockInThisMonth,
+                    stockOutThisMonth,
+                    lastStockCheck,
+                };
+                setInventoryData(newInventoryData);
+                console.log('[DashboardPage] Updated inventoryData:', newInventoryData);
+
+                const productResponse = await fetchProductReportAPI(timeRange);
+                console.log('[DashboardPage] Response from /api/reports/products:', productResponse.data);
+                const newChartData = productResponse.data || [];
+                setChartData(newChartData);
+                console.log('[DashboardPage] Updated chartData:', newChartData);
+            } catch (err) {
+                console.error('[DashboardPage] Error in fetchData:', err);
+                console.error('[DashboardPage] Error details:', {
+                    message: err.message,
+                    stack: err.stack,
+                    response: err.response ? err.response.data : 'No response data',
+                });
+                message.error('Lỗi khi tải dữ liệu: ' + (err.message || 'Không rõ nguyên nhân'));
+            } finally {
+                setLoading(false);
+                console.log('[DashboardPage] Set loading to false');
+            }
+        };
+        fetchData();
+    }, [timeRange, selectedDate]);
 
     const statCards = [
-        {
-            title: 'Tổng SP khác nhau',
-            value: inventoryData.totalProducts,
-            icon: <DropboxOutlined style={{ fontSize: '24px', color: '#1890ff' }} />,
-            precision: 0,
-            suffix: 'sản phẩm',
-            tooltip: 'Đếm theo mã sản phẩm',
-        },
-        {
-            title: 'Tổng SL tồn kho',
-            value: inventoryData.totalStock,
-            icon: <BoxPlotOutlined style={{ fontSize: '24px', color: '#52c41a' }} />,
-            precision: 0,
-            suffix: 'đơn vị',
-            tooltip: 'Tổng đơn vị hàng hóa',
-        },
-        {
-            title: 'Tổng SL nhập',
-            value: inventoryData.stockInThisMonth,
-            icon: <LoginOutlined style={{ fontSize: '24px', color: '#722ed1' }} />,
-            precision: 0,
-            suffix: 'đơn vị',
-            tooltip: 'Tính đến hiện tại',
-        },
-        {
-            title: 'Tổng SL xuất',
-            value: inventoryData.stockOutThisMonth,
-            icon: <LogoutOutlined style={{ fontSize: '24px', color: '#faad14' }} />,
-            precision: 0,
-            suffix: 'đơn vị',
-            tooltip: 'Tính đến hiện tại',
-        },
-        // {
-        //     title: 'Kiểm kho gần nhất',
-        //     value: inventoryData.lastStockCheck,
-        //     icon: <CalendarOutlined style={{ fontSize: '24px', color: '#f5222d' }} />,
-        //     isDate: true, // Đánh dấu để không hiển thị như số
-        //     tooltip: 'Ngày hoàn thành kiểm kê',
-        // },
+        { title: 'Tổng SP khác nhau', value: inventoryData.totalProducts, icon: <DropboxOutlined />, precision: 0, suffix: 'sản phẩm', tooltip: 'Đếm theo mã sản phẩm' },
+        { title: 'Tổng SL tồn kho', value: inventoryData.totalStock, icon: <BoxPlotOutlined />, precision: 0, suffix: 'đơn vị', tooltip: 'Tổng đơn vị hàng hóa' },
+        { title: 'SL nhập trong tháng', value: inventoryData.stockInThisMonth, icon: <LoginOutlined />, precision: 0, suffix: 'đơn vị', tooltip: 'Tính đến hiện tại' },
+        { title: 'SL xuất trong tháng', value: inventoryData.stockOutThisMonth, icon: <LogoutOutlined />, precision: 0, suffix: 'đơn vị', tooltip: 'Tính đến hiện tại' },
+        { title: 'Kiểm kho gần nhất', value: inventoryData.lastStockCheck, icon: <CalendarOutlined />, isDate: true, tooltip: 'Ngày hoàn thành kiểm kê' },
     ];
 
     const taskCards = [
         { title: 'Quản lý Nhập Kho', icon: <LoginOutlined />, description: 'Tạo phiếu nhập, xem lịch sử', link: '/stock-in' },
         { title: 'Quản lý Xuất Kho', icon: <LogoutOutlined />, description: 'Tạo phiếu xuất, xem lịch sử', link: '/stock-out' },
         { title: 'Quản lý Kiểm Kê', icon: <CarryOutOutlined />, description: 'Tạo phiếu, đối chiếu số liệu', link: '/stock-check' },
-        { title: 'Quản lý Báo Cáo', icon: <LineChartOutlined />, description: 'Báo cáo tồn kho', link: '/reports' },
-        { title: 'Quản lý Quyền Hạn', icon: <UserOutlined />, description: 'Người dùng, phân quyền', link: '/permissions' },
-        { title: 'Cài Đặt', icon: <SettingOutlined />, description: 'Sản phẩm, kho', link: '/settings' },
+        { title: 'Quản lý Báo Cáo', icon: <LineChartOutlined />, description: 'Báo cáo tồn kho, NXT', link: '/reports' },
+        { title: 'Cài Đặt', icon: <SettingOutlined />, description: 'Sản phẩm, kho, người dùng', link: '/settings' },
     ];
 
-    // Placeholder cho biểu đồ SVG (tương tự như bản HTML)
-    const renderChartPlaceholder = () => (
-        <svg viewBox="0 0 400 200" style={{ width: '100%', height: 'auto' }} aria-labelledby="chartTitleAntd" aria-describedby="chartDescAntd">
-            <title id="chartTitleAntd">Biểu đồ biến động tồn kho</title>
-            <desc id="chartDescAntd">Biểu đồ đường thể hiện sự thay đổi tổng số lượng tồn kho theo ngày trong tháng.</desc>
-            <line x1="30" y1="10" x2="30" y2="170" stroke="#D1D5DB" strokeWidth="1" />
-            <text x="5" y="15" fontSize="10" fill="#6B7280">SL</text>
-            <text x="5" y="170" fontSize="10" fill="#6B7280">0</text>
-            <line x1="30" y1="170" x2="380" y2="170" stroke="#D1D5DB" strokeWidth="1" />
-            <text x="30" y="185" fontSize="10" fill="#6B7280">Ngày 1</text>
-            <text x="350" y="185" fontSize="10" fill="#6B7280">Ngày 31</text>
-            <polyline points="30,150 60,120 90,130 120,100 150,80 180,90 210,60 240,70 270,50 300,65 330,40 360,50"
-                fill="none" stroke="#1890ff" strokeWidth="2" />
-            {chartData.slice(0, 12).map((point, index) => ( // Giới hạn số điểm vẽ để tránh quá nhiều
-                <circle key={index} cx={30 + index * (330 / 11)} cy={170 - (point.value * 160 / 200)} r="3" fill="#1890ff" />
-            ))}
-        </svg>
-    );
+    const chartConfig = {
+        data: {
+            labels: chartData.map(item => item.day),
+            datasets: [{
+                label: 'Tồn kho',
+                data: chartData.map(item => item.value),
+                borderColor: '#1890ff',
+                backgroundColor: 'rgba(24, 144, 255, 0.2)',
+                fill: true,
+                tension: 0.4,
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                title: { 
+                    display: true, 
+                    text: `Biến động tồn kho (${timeRange === 'month' ? 'tháng' : timeRange === 'week' ? 'tuần' : timeRange === 'custom' && selectedDate?.isWeek ? 'tuần' : 'ngày'})` 
+                },
+            },
+            scales: {
+                x: { title: { display: true, text: 'Ngày' } },
+                y: { title: { display: true, text: 'Số lượng' }, beginAtZero: true },
+            },
+        },
+    };
 
-    useEffect(() => {
-        const countProducts = async () => {
-            try {
-                const res = await countProductsAPI();
-                setTotalProducts(res.data);
-            } catch (error) {
-                message.error("Lỗi khi lấy số lượng sản phẩm");
-            }
+    const handleDateChange = (date) => {
+        if (date) {
+            setSelectedDate({ date, isWeek: false });
+            setTimeRange('custom');
+        } else {
+            setSelectedDate(null);
+            setTimeRange('month');
         }
+    };
 
-        const countStock = async () => {
-            try {
-                const res = await countStockAPI();
-                setTotalStock(res.data);
-            } catch (error) {
-                message.error("Lỗi khi lấy số lượng sản phẩm");
-            }
+    const handleWeekChange = (date) => {
+        if (date) {
+            setSelectedDate({ date, isWeek: true });
+            setTimeRange('custom');
+        } else {
+            setSelectedDate(null);
+            setTimeRange('month');
         }
-
-        const countTotalImportQuantity = async () => {
-            try {
-                const res = await countTotalImportQuantityAPI();
-                setTotalImportQuantity(res.data);
-            } catch (error) {
-                message.error("Lỗi khi lấy số lượng sản phẩm");
-            }
-        }
-
-        const countTotalExportQuantity = async () => {
-            try {
-                const res = await countTotalExportQuantityAPI();
-                setTotalExportQuantity(res.data);
-            } catch (error) {
-                message.error("Lỗi khi lấy số lượng sản phẩm");
-            }
-        }
-
-        countProducts();
-        countStock();
-        countTotalImportQuantity();
-        countTotalExportQuantity();
-    }, [])
+    };
 
     return (
         <div style={{ background: '#fff', padding: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
-            {/* Tổng quan tình trạng kho */}
-            <Title level={4} style={{ marginBottom: '20px' }}>Tổng Quan Tình Trạng Kho ({currentMonthYear})</Title>
-            <Row gutter={[16, 16]}>
-                {statCards.map((card, index) => (
-                    <Col xs={24} sm={12} md={12} lg={8} xl={24 / statCards.length} key={index}>
-                        <Tooltip title={card.tooltip}>
-                            <Card hoverable bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                {card.isDate ? (
-                                    <Statistic title={<Space>{card.icon}{card.title}</Space>} value={card.value} />
-                                ) : (
-                                    <Statistic
-                                        title={<Space>{card.icon}{card.title}</Space>}
-                                        value={card.value}
-                                        precision={card.precision}
-                                        valueStyle={{ color: card.value > 0 && (card.title.includes('nhập') || card.title.includes('tồn')) ? '#3f8600' : (card.title.includes('xuất') ? '#cf1322' : undefined) }}
-                                        // prefix={card.value > 0 && (card.title.includes('nhập') || card.title.includes('tồn')) ? <ArrowUpOutlined /> : (card.title.includes('xuất') ? <ArrowDownOutlined /> : null)}
-                                        suffix={card.suffix}
-                                    />
-                                )}
-                            </Card>
-                        </Tooltip>
-                    </Col>
-                ))}
-            </Row>
+            <Space style={{ marginBottom: 16, flexWrap: 'wrap' }}>
+                <Text strong>Lọc theo thời gian:</Text>
+                <Select
+                    value={timeRange}
+                    onChange={(value) => {
+                        setTimeRange(value);
+                        setSelectedDate(null); // Reset ngày chọn khi thay đổi timeRange
+                    }}
+                    style={{ width: 120 }}
+                    options={[
+                        { value: 'day', label: 'Ngày' },
+                        { value: 'week', label: 'Tuần' },
+                        { value: 'month', label: 'Tháng' },
+                        { value: 'custom', label: 'Tùy chỉnh' },
+                    ]}
+                />
+                {timeRange === 'custom' && (
+                    <>
+                        <DatePicker
+                            onChange={handleDateChange}
+                            format="DD/MM/YYYY"
+                            placeholder="Chọn ngày"
+                            style={{ width: 150 }}
+                            disabledDate={(current) => current && current > moment().endOf('day')}
+                        />
+                        <DatePicker.WeekPicker
+                            onChange={handleWeekChange}
+                            format="DD/MM/YYYY"
+                            placeholder="Chọn tuần"
+                            style={{ width: 150 }}
+                            disabledDate={(current) => current && current > moment().endOf('week')}
+                        />
+                    </>
+                )}
+            </Space>
 
-            {/* Biểu đồ biến động hàng hóa */}
+            <Title level={4} style={{ marginBottom: '20px' }}>Tổng Quan Tình Trạng Kho ({currentMonthYear})</Title>
+            {loading ? (
+                <Spin tip="Đang tải dữ liệu..." style={{ display: 'block', margin: '50px auto' }} />
+            ) : (
+                <Row gutter={[16, 16]}>
+                    {statCards.map((card, index) => (
+                        <Col xs={24} sm={12} md={12} lg={8} xl={24 / statCards.length} key={index}>
+                            <Tooltip title={card.tooltip}>
+                                <Card hoverable bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                                    {card.isDate ? (
+                                        <Statistic title={<Space>{card.icon}{card.title}</Space>} value={card.value} />
+                                    ) : (
+                                        <Statistic
+                                            title={<Space>{card.icon}{card.title}</Space>}
+                                            value={card.value}
+                                            precision={card.precision}
+                                            valueStyle={{ color: card.value > 0 && (card.title.includes('nhập') || card.title.includes('tồn')) ? '#3f8600' : (card.title.includes('xuất') ? '#cf1322' : undefined) }}
+                                            suffix={card.suffix}
+                                        />
+                                    )}
+                                </Card>
+                            </Tooltip>
+                        </Col>
+                    ))}
+                </Row>
+            )}
+
             <Title level={4} style={{ marginTop: '32px', marginBottom: '20px' }}>Biểu Đồ Biến Động Hàng Hóa ({currentMonthYear})</Title>
-            <Card title="Biến động tồn kho trong tháng" bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                {/* Thay thế bằng thư viện biểu đồ thực tế */}
-                {renderChartPlaceholder()}
+            <Card title={`Biến động tồn kho (${timeRange === 'month' ? 'tháng' : timeRange === 'week' ? 'tuần' : timeRange === 'custom' && selectedDate?.isWeek ? 'tuần' : 'ngày'})`} bordered={false} style={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                {loading ? (
+                    <Spin tip="Đang tải dữ liệu biểu đồ..." style={{ display: 'block', margin: '50px auto' }} />
+                ) : chartData.length > 0 ? (
+                    <Line data={chartConfig.data} options={chartConfig.options} />
+                ) : (
+                    <Text type="secondary">Không có dữ liệu để hiển thị.</Text>
+                )}
                 <Text type="secondary" style={{ textAlign: 'center', display: 'block', marginTop: '10px' }}>
-                    Trục X: Ngày trong tháng, Trục Y: Tổng số lượng tồn kho.
+                    Trục X: Ngày, Trục Y: Tổng số lượng tồn kho.
                 </Text>
             </Card>
 
-            {/* Danh sách các tác vụ */}
             <Title level={4} style={{ marginTop: '32px', marginBottom: '20px' }}>Danh Sách Các Tác Vụ</Title>
             <Row gutter={[16, 16]}>
                 {taskCards.map((task, index) => (
@@ -207,7 +290,7 @@ const DashboardPage = () => {
                 ))}
             </Row>
         </div>
-    )
-}
+    );
+};
 
 export default DashboardPage;
