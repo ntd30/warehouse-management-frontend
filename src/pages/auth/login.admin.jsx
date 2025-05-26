@@ -14,24 +14,27 @@ const LoginAdminPage = () => {
 
     const onFinish = async (values) => {
         setLoading(true)
-        const res = await loginAPI(values.username, values.password)
 
-        console.log("reslogin", res)
-
-        if (res.data) {
-            localStorage.setItem('access_token', res.data.token)
-            notification.success({
-                message: "Đăng nhập thành công",
-                // description: "Đăng nhập thành công"
-            })
-            navigate("/")
-        } else {
+        try {
+            const res = await loginAPI(values.username, values.password)
+            if (res.data) {
+                localStorage.setItem('access_token', res.data.token)
+                notification.success({
+                    message: "Đăng nhập thành công",
+                })
+                navigate("/")
+            } else {
+                notification.error({
+                    message: "Đăng nhập thất bại",
+                })
+            }
+        } catch (error) {
             notification.error({
                 message: "Đăng nhập thất bại",
-                // description: "Đăng nhập thất bại"
             })
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
     return (

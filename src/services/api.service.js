@@ -65,6 +65,46 @@ export const fetchLocationsAPI = async () => {
     return await axios.get(URL_BACKEND);
 };
 
+export const fetchAllPermissionsAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/admin/permissions?page=${current}&size=${pageSize}`
+    return axios.get(URL_BACKEND)
+}
+
+export const fetchAllRolesAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/admin/roles?page=${current}&size=${pageSize}`
+    return axios.get(URL_BACKEND)
+}
+
+export const createUpdateRoleAPI = async (id, { name, description }) => {
+    const URL_BACKEND = '/api/admin/roles';
+    const data = { name, description };
+    if (id) {
+        // Cập nhật vai trò
+        return axios.put(`${URL_BACKEND}/${id}`, data);
+    } else {
+        // Thêm mới vai trò
+        return axios.post(URL_BACKEND, data);
+    }
+};
+
+export const ganNhieuQuyenChoVaiTro = (roleId, permissionIds) => {
+    const URL_BACKEND = `/api/admin/permissions/assign`
+    const data = {
+        roleId: roleId,
+        permissionIds: permissionIds
+    }
+    return axios.post(URL_BACKEND, data)
+}
+
+export const deleteRoleAPI = (id) => {
+    const URL_BACKEND = `/api/admin/roles/${id}`;
+    return axios.delete(URL_BACKEND);
+};
+
+export const fetchAllUsersAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/admin/users?page=${current}&size=${pageSize}&sort=id,desc`;
+    return axios.get(URL_BACKEND);
+};
 
 export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {
     try {

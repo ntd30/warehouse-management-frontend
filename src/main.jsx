@@ -15,6 +15,7 @@ import SettingsScreen from './pages/setting.jsx';
 import StockCheckScreen from './pages/stock.check.jsx';
 import PrivateRoute from './pages/private.route.jsx';
 import ErrorPage from './pages/error.jsx';
+import UserPermissionScreen from './pages/user.permissin.jsx';
 
 const router = createBrowserRouter([
   {
@@ -57,6 +58,10 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: <SettingsScreen />
+      },
+      {
+        path: "permissions",
+        element: <UserPermissionScreen />
       },
     ]
   },

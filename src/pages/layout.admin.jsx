@@ -1,4 +1,5 @@
 import {
+    ApiOutlined,
     AppstoreOutlined, CheckSquareOutlined, EditOutlined,
     LoginOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SettingOutlined
 } from "@ant-design/icons";
@@ -33,6 +34,11 @@ const menuItems = [
         label: <Link to='/reports'>Báo cáo</Link>,
         key: '/reports',
         icon: <EditOutlined />
+    },
+    {
+        label: <Link to='/permissions'>Phân quyền</Link>,
+        key: '/permissions',
+        icon: <ApiOutlined />
     },
     {
         label: <Link to='/settings'>Cài đặt</Link>,
