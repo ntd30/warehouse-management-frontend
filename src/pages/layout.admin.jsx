@@ -1,4 +1,5 @@
 import {
+    ApiOutlined,
     AppstoreOutlined, CheckSquareOutlined, EditOutlined,
     LoginOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SettingOutlined
 } from "@ant-design/icons";
@@ -35,6 +36,11 @@ const menuItems = [
         icon: <EditOutlined />
     },
     {
+        label: <Link to='/permissions'>Phân quyền</Link>,
+        key: '/permissions',
+        icon: <ApiOutlined />
+    },
+    {
         label: <Link to='/settings'>Cài đặt</Link>,
         key: '/settings',
         icon: <SettingOutlined />
@@ -52,7 +58,7 @@ const LayoutAdmin = () => {
         notification.success({
             message: "Đăng xuất thành công"
         })
-        navigate('/')
+        navigate('/login')
     }
 
     const itemsDropdown = [

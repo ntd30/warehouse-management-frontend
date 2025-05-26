@@ -28,49 +28,52 @@ import {
 import moment from 'moment';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { fetchProductByCodeAPI, warehouse } from '../services/api.service';
+import { createSupplierAPI, createLocationAPI, fetchSuppliersAPI, fetchLocationsAPI } from '../services/api.service';
 import { AuthContext } from '../components/context/auth.context';
 
 const { Title, Text } = Typography;
-
-const mockSuppliers = [
-    { id: 'ncc1', name: 'Nhà Cung Cấp A' },
-    { id: 'ncc2', name: 'Nhà Cung Cấp B' },
-    { id: 'ncc3', name: 'Công Ty TNHH XYZ' },
-];
-
-const mockStorageLocations = [
-    { id: 'vt1', name: 'Kho Chính - Kệ A1' },
-    { id: 'vt2', name: 'Kho Phụ - Khu B' },
-    { id: 'vt3', name: 'Tầng 2 - Kệ C3' },
-];
-
-const mockUnits = [
-    { id: 'cai', name: 'Cái' },
-    { id: 'hop', name: 'Hộp' },
-    { id: 'thung', name: 'Thùng' },
-    { id: 'kg', name: 'Kg' },
-];
-
-const mockProducts = [
-    { id: 'SP001', name: 'Sản phẩm Alpha', unit: 'cai', defaultSupplier: 'ncc1', defaultLocation: 'vt1' },
-    { id: 'SP002', name: 'Sản phẩm Beta', unit: 'hop', defaultSupplier: 'ncc2', defaultLocation: 'vt1' },
-    { id: 'SP003', name: 'Sản phẩm Gamma', unit: 'thung', defaultSupplier: 'ncc1', defaultLocation: 'vt2' },
-    { id: `SP004`, name: 'Sản phẩm Duy', unit: 'thung', defaultSupplier: 'ncc1', defaultLocation: 'vt2' },
-];
 
 const StockInScreen = () => {
     const [form] = Form.useForm();
     const [itemForm] = Form.useForm();
     const [addedItems, setAddedItems] = useState([]);
     const [fileList, setFileList] = useState([]);
-    // const [products, setProducts] = useState(mockProducts);
-    const [suppliers, setSuppliers] = useState(mockSuppliers);
-    const [locations, setLocations] = useState(mockStorageLocations);
-    const [units, setUnits] = useState(mockUnits);
+    const [suppliers, setSuppliers] = useState([]);
+    const [locations, setLocations] = useState([]);
+    const [units, setUnits] = useState([
+        { id: 'Cái', name: 'Cái' },
+        { id: 'Quả', name: 'Quả' },
+        { id: 'Hộp', name: 'Hộp' },
+        { id: 'Thùng', name: 'Thùng' },
+        { id: 'Kg', name: 'Kg' },
+    ]);
     const [isScanning, setIsScanning] = useState(false);
     const scannerRef = useRef(null);
     const { user } = useContext(AuthContext);
 
+    // Fetch suppliers and locations from backend on component mount
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                // Fetch suppliers
+                const supplierResponse = await fetchSuppliersAPI();
+                if (supplierResponse.data) {
+                    setSuppliers(supplierResponse.data.map(s => ({ id: s.name, name: s.name })));
+                }
+
+                // Fetch locations
+                const locationResponse = await fetchLocationsAPI();
+                if (locationResponse.data) {
+                    setLocations(locationResponse.data.map(l => ({ id: l.name, name: l.name })));
+                }
+            } catch (error) {
+                message.error('Lỗi khi tải dữ liệu nhà cung cấp hoặc vị trí: ' + error.message);
+            }
+        };
+        loadData();
+    }, []);
+
+    // Initialize voucher code and date
     useEffect(() => {
         form.setFieldsValue({
             voucherCode: `PN${moment().format('YYYYMMDDHHmmss')}`,
@@ -78,6 +81,7 @@ const StockInScreen = () => {
         });
     }, [form]);
 
+    // Handle QR code scanning
     useEffect(() => {
         if (isScanning) {
             const config = {
@@ -110,11 +114,9 @@ const StockInScreen = () => {
     }, [isScanning, itemForm]);
 
     const handleAddItem = (values) => {
-        // const selectedProduct = products.find(p => p.id === values.productCode);
         const newItem = {
             key: Date.now(),
             ...values,
-            // productName: selectedProduct ? selectedProduct.name : (values.productName || 'N/A'),
         };
         setAddedItems([...addedItems, newItem]);
         itemForm.resetFields();
@@ -127,20 +129,71 @@ const StockInScreen = () => {
     };
 
     const handleProductCodeChange = async (event) => {
-        // const product = products.find(p => p.id === value);
-        const product = await fetchProductByCodeAPI(event?.target?.value ? event?.target?.value : event)
-        if (product.data) {
-            itemForm.setFieldsValue({
-                productName: product.data.productName,
-                unit: product.data.unit,
-                supplierName: product.data.supplierName,
-                locationName: product.data.locationName,
-            });
+        const productCode = event?.target?.value ? event.target.value : event;
+
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+
+        try {
+            const product = await fetchProductByCodeAPI(productCode);
+            if (product.data) {
+                itemForm.setFieldsValue({
+                    productName: product.data.productName,
+                    unit: product.data.unit,
+                    supplierName: product.data.supplierName,
+                    locationName: product.data.locationName,
+                });
+            } else {
+                message.error("Mã hàng không tồn tại");
+                itemForm.resetFields(['productName', 'unit', 'supplierName', 'locationName']);
+            }
+        } catch (error) {
+            message.error("Lỗi khi kiểm tra mã hàng: " + error.message);
+            itemForm.resetFields(['productName', 'unit', 'supplierName', 'locationName']);
         }
     };
 
     const handleScanBarcode = () => {
         setIsScanning(true);
+    };
+
+    const handleAddSupplier = async (value) => {
+        if (!value || value.trim() === "") {
+            message.warn("Vui lòng nhập tên nhà cung cấp để thêm mới.");
+            return;
+        }
+        try {
+            const response = await createSupplierAPI({ name: value });
+            if (response.data) {
+                const newSupplier = { id: response.data.name, name: response.data.name };
+                setSuppliers(prev => [...prev, newSupplier]);
+                itemForm.setFieldsValue({ supplierName: newSupplier.name });
+                message.success(`Đã thêm nhà cung cấp "${newSupplier.name}"`);
+                document.getElementById('newSupplierInput').value = '';
+            }
+        } catch (error) {
+            message.error("Lỗi khi thêm nhà cung cấp");
+        }
+    };
+
+    const handleAddLocation = async (value) => {
+        if (!value || value.trim() === "") {
+            message.warn("Vui lòng nhập tên vị trí để thêm mới.");
+            return;
+        }
+        try {
+            const response = await createLocationAPI({ name: value });
+            if (response.data) {
+                const newLocation = { id: response.data.name, name: response.data.name };
+                setLocations(prev => [...prev, newLocation]);
+                itemForm.setFieldsValue({ locationName: newLocation.name });
+                message.success(`Đã thêm vị trí "${newLocation.name}"`);
+                document.getElementById('newLocationInput').value = '';
+            }
+        } catch (error) {
+            message.error("Lỗi khi thêm vị trí");
+        }
     };
 
     const onFinishVoucher = async (values) => {
@@ -149,6 +202,7 @@ const StockInScreen = () => {
             return;
         }
         const voucherData = {
+            code: values.voucherCode,
             username: user.username,
             note: values.notes || "Nhập hàng",
             products: addedItems.map(item => ({
@@ -156,10 +210,10 @@ const StockInScreen = () => {
                 productName: item.productName,
                 quantity: item.quantity,
                 unit: item.unit,
-                supplierName: item.supplierName, // Map 'supplier' to 'supplierName'
-                locationName: item.locationName, // Map 'storageLocation' to 'locationName'
-                unitPrice: item.unitPrice || 0 // Thêm unitPrice, mặc định là 0 nếu không có
-            }))
+                supplierName: item.supplierName,
+                locationName: item.locationName,
+                unitPrice: item.unitPrice || 0,
+            })),
         };
 
         const formData = new FormData();
@@ -168,20 +222,24 @@ const StockInScreen = () => {
             formData.append('invoiceFile', file.originFileObj || file);
         });
 
-        const res = await warehouse(formData);
-
-        if (res) {
-            message.success('Đã lưu phiếu nhập thành công!');
-            form.resetFields();
-            itemForm.resetFields();
-            setAddedItems([]);
-            setFileList([]);
-            form.setFieldsValue({
-                voucherCode: `PN${moment().format('YYYYMMDDHHmmss')}`,
-                dateIn: moment(),
-            });
-        } else {
-            message.error('Lỗi khi lưu phiếu nhập: ' + res);
+        try {
+            const res = await warehouse(formData);
+            console.log("resxxx", res)
+            if (res.data) {
+                message.success('Đã lưu phiếu nhập thành công!');
+                form.resetFields();
+                itemForm.resetFields();
+                setAddedItems([]);
+                setFileList([]);
+                form.setFieldsValue({
+                    voucherCode: `PN${moment().format('YYYYMMDDHHmmss')}`,
+                    dateIn: moment(),
+                });
+            } else {
+                message.error('Lỗi khi lưu phiếu nhập.');
+            }
+        } catch (error) {
+            message.error('Lỗi khi lưu phiếu nhập: ');
         }
     };
 
@@ -201,42 +259,6 @@ const StockInScreen = () => {
         fileList,
         multiple: true,
     };
-
-    // const handleAddItemToSelect = (value, type, inputIdToClear) => {
-    //     if (!value || value.trim() === "") {
-    //         message.warn("Vui lòng nhập giá trị để thêm mới.");
-    //         return;
-    //     }
-    //     message.info(`"${value}" sẽ được xem xét để thêm mới khi lưu phiếu. (Backend xử lý)`);
-    //     const tempId = value.toLowerCase().replace(/\s+/g, '') + '_' + Date.now();
-    //     const newItem = { id: tempId, name: value };
-
-    //     let success = false;
-    //     if (type === 'product') {
-    //         setProducts(prev => [...prev, newItem]);
-    //         itemForm.setFieldsValue({ productCode: newItem.id, productName: newItem.name });
-    //         success = true;
-    //     } else if (type === 'supplier') {
-    //         setSuppliers(prev => [...prev, newItem]);
-    //         itemForm.setFieldsValue({ supplier: newItem.id });
-    //         success = true;
-    //     } else if (type === 'location') {
-    //         setLocations(prev => [...prev, newItem]);
-    //         itemForm.setFieldsValue({ storageLocation: newItem.id });
-    //         success = true;
-    //     } else if (type === 'unit') {
-    //         setUnits(prev => [...prev, newItem]);
-    //         itemForm.setFieldsValue({ unit: newItem.id });
-    //         success = true;
-    //     }
-
-    //     if (success && inputIdToClear) {
-    //         const inputElement = document.getElementById(inputIdToClear);
-    //         if (inputElement) {
-    //             inputElement.value = '';
-    //         }
-    //     }
-    // };
 
     const columns = [
         { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120, ellipsis: true },
@@ -303,38 +325,9 @@ const StockInScreen = () => {
                             <Col xs={24} sm={12} md={6} lg={5}>
                                 <Form.Item name="productCode" label="Mã Hàng" rules={[{ required: true, message: 'Mã hàng không được trống!' }]}>
                                     <Input
-                                        // showSearch
                                         placeholder="Nhập hoặc quét mã hàng"
                                         allowClear
-                                        // optionFilterProp="label"
-                                        onChange={handleProductCodeChange}
-                                        // filterOption={(input, option) =>
-                                        //     (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                        // }
-                                        // options={products.map(p => ({ value: p.id, label: `${p.id} - ${p.name}` }))}
-                                        // dropdownRender={menu => (
-                                        //     <>
-                                        //         {menu}
-                                        //         <Divider style={{ margin: '8px 0' }} />
-                                        //         <Space style={{ padding: '0 8px 4px' }}>
-                                        //             <Input
-                                        //                 placeholder="Nhập mã hàng mới"
-                                        //                 id="newProductInput"
-                                        //                 style={{ flex: 1 }}
-                                        //                 onPressEnter={(e) => {
-                                        //                     e.preventDefault();
-                                        //                     handleAddItemToSelect(e.target.value, 'product', 'newProductInput');
-                                        //                 }}
-                                        //             />
-                                        //             <Button type="primary" icon={<PlusOutlined />} onClick={() => {
-                                        //                 const val = document.getElementById('newProductInput').value;
-                                        //                 handleAddItemToSelect(val, 'product', 'newProductInput');
-                                        //             }}>
-                                        //                 Thêm
-                                        //             </Button>
-                                        //         </Space>
-                                        //     </>
-                                        // )}
+                                        onPressEnter={handleProductCodeChange}
                                     />
                                 </Form.Item>
                             </Col>
@@ -357,59 +350,74 @@ const StockInScreen = () => {
                                 <Form.Item name="unit" label="ĐVT" rules={[{ required: true, message: 'ĐVT không được trống!' }]}>
                                     <Select placeholder="Chọn ĐVT" allowClear
                                         options={units.map(u => ({ value: u.id, label: u.name }))}
-                                        // dropdownRender={menu => (
-                                        //     <>
-                                        //         {menu}
-                                        //         <Divider style={{ margin: '8px 0' }} />
-                                        //         <Space style={{ padding: '0 8px 4px' }}>
-                                        //             <Input placeholder="Nhập ĐVT mới" id="newUnitInput" style={{ flex: 1 }} onPressEnter={(e) => { e.preventDefault(); handleAddItemToSelect(e.target.value, 'unit', 'newUnitInput'); }} />
-                                        //             <Button type="primary" icon={<PlusOutlined />} onClick={() => {
-                                        //                 const val = document.getElementById('newUnitInput').value;
-                                        //                 handleAddItemToSelect(val, 'unit', 'newUnitInput');
-                                        //             }}>Thêm</Button>
-                                        //         </Space>
-                                        //     </>
-                                        // )}
                                     />
                                 </Form.Item>
                             </Col>
                             <Col xs={24} sm={8} md={6} lg={3}>
                                 <Form.Item name="supplierName" label="Nhà Cung Cấp">
                                     <Select placeholder="Chọn NCC" allowClear
-                                        options={suppliers.map(s => ({ value: s.id, label: s.name }))}
-                                        // dropdownRender={menu => (
-                                        //     <>
-                                        //         {menu}
-                                        //         <Divider style={{ margin: '8px 0' }} />
-                                        //         <Space style={{ padding: '0 8px 4px' }}>
-                                        //             <Input placeholder="Nhập NCC mới" id="newSupplierInput" style={{ flex: 1 }} onPressEnter={(e) => { e.preventDefault(); handleAddItemToSelect(e.target.value, 'supplier', 'newSupplierInput'); }} />
-                                        //             <Button type="primary" icon={<PlusOutlined />} onClick={() => {
-                                        //                 const val = document.getElementById('newSupplierInput').value;
-                                        //                 handleAddItemToSelect(val, 'supplier', 'newSupplierInput');
-                                        //             }}>Thêm</Button>
-                                        //         </Space>
-                                        //     </>
-                                        // )}
+                                        options={suppliers.map(s => ({ value: s.name, label: s.name }))}
+                                        dropdownRender={menu => (
+                                            <>
+                                                {menu}
+                                                <Divider style={{ margin: '8px 0' }} />
+                                                <Space style={{ padding: '0 8px 4px' }}>
+                                                    <Input
+                                                        placeholder="Nhập NCC mới"
+                                                        id="newSupplierInput"
+                                                        style={{ flex: 1 }}
+                                                        onPressEnter={(e) => {
+                                                            e.preventDefault();
+                                                            handleAddSupplier(e.target.value);
+                                                        }}
+                                                    />
+                                                    <Button
+                                                        type="primary"
+                                                        icon={<PlusOutlined />}
+                                                        onClick={() => {
+                                                            const val = document.getElementById('newSupplierInput').value;
+                                                            handleAddSupplier(val);
+                                                        }}
+                                                    >
+                                                        Thêm
+                                                    </Button>
+                                                </Space>
+                                            </>
+                                        )}
                                     />
                                 </Form.Item>
                             </Col>
                             <Col xs={24} sm={12} md={6} lg={3}>
                                 <Form.Item name="locationName" label="Vị Trí Lưu Trữ">
                                     <Select placeholder="Chọn vị trí" allowClear
-                                        options={locations.map(l => ({ value: l.id, label: l.name }))}
-                                        // dropdownRender={menu => (
-                                        //     <>
-                                        //         {menu}
-                                        //         <Divider style={{ margin: '8px 0' }} />
-                                        //         <Space style={{ padding: '0 8px 4px' }}>
-                                        //             <Input placeholder="Nhập vị trí mới" id="newLocationInput" style={{ flex: 1 }} onPressEnter={(e) => { e.preventDefault(); handleAddItemToSelect(e.target.value, 'location', 'newLocationInput'); }} />
-                                        //             <Button type="primary" icon={<PlusOutlined />} onClick={() => {
-                                        //                 const val = document.getElementById('newLocationInput').value;
-                                        //                 handleAddItemToSelect(val, 'location', 'newLocationInput');
-                                        //             }}>Thêm</Button>
-                                        //         </Space>
-                                        //     </>
-                                        // )}
+                                        options={locations.map(l => ({ value: l.name, label: l.name }))}
+                                        dropdownRender={menu => (
+                                            <>
+                                                {menu}
+                                                <Divider style={{ margin: '8px 0' }} />
+                                                <Space style={{ padding: '0 8px 4px' }}>
+                                                    <Input
+                                                        placeholder="Nhập vị trí mới"
+                                                        id="newLocationInput"
+                                                        style={{ flex: 1 }}
+                                                        onPressEnter={(e) => {
+                                                            e.preventDefault();
+                                                            handleAddLocation(e.target.value);
+                                                        }}
+                                                    />
+                                                    <Button
+                                                        type="primary"
+                                                        icon={<PlusOutlined />}
+                                                        onClick={() => {
+                                                            const val = document.getElementById('newLocationInput').value;
+                                                            handleAddLocation(val);
+                                                        }}
+                                                    >
+                                                        Thêm
+                                                    </Button>
+                                                </Space>
+                                            </>
+                                        )}
                                     />
                                 </Form.Item>
                             </Col>

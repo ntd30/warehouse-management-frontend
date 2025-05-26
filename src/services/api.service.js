@@ -78,3 +78,210 @@ export const exportStockCheckExcelByDate = async (date) => {
 };
 
 
+export const getProfileAPI = () => {
+    const URL_BACKEND = `/api/auth/profile`;
+    return axios.get(URL_BACKEND);
+}
+
+export const createSupplierAPI = async (supplierData) => {
+    const URL_BACKEND = `/api/suppliers`;
+    return await axios.post(URL_BACKEND, supplierData);
+};
+
+export const createLocationAPI = async (locationData) => {
+    const URL_BACKEND = `/api/locations`;
+    return await axios.post(URL_BACKEND, locationData);
+};
+
+export const fetchSuppliersAPI = async () => {
+    const URL_BACKEND = `/api/suppliers`;
+    return await axios.get(URL_BACKEND);
+};
+
+export const fetchLocationsAPI = async () => {
+    const URL_BACKEND = `/api/locations`;
+    return await axios.get(URL_BACKEND);
+};
+
+export const fetchAllPermissionsAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/admin/permissions?page=${current}&size=${pageSize}`
+    return axios.get(URL_BACKEND)
+}
+
+export const fetchAllRolesAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/admin/roles?page=${current}&size=${pageSize}`
+    return axios.get(URL_BACKEND)
+}
+
+export const createUpdateRoleAPI = async (id, { name, description }) => {
+    const URL_BACKEND = '/api/admin/roles';
+    const data = { name, description };
+    if (id) {
+        // Cập nhật vai trò
+        return axios.put(`${URL_BACKEND}/${id}`, data);
+    } else {
+        // Thêm mới vai trò
+        return axios.post(URL_BACKEND, data);
+    }
+};
+
+export const ganNhieuQuyenChoVaiTro = (roleId, permissionIds) => {
+    const URL_BACKEND = `/api/admin/permissions/assign`
+    const data = {
+        roleId: roleId,
+        permissionIds: permissionIds
+    }
+    return axios.post(URL_BACKEND, data)
+}
+
+export const deleteRoleAPI = (id) => {
+    const URL_BACKEND = `/api/admin/roles/${id}`;
+    return axios.delete(URL_BACKEND);
+};
+
+export const fetchAllUsersAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/admin/users?page=${current}&size=${pageSize}&sort=id,desc`;
+    return axios.get(URL_BACKEND);
+};
+
+export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {
+    try {
+        const response = await axios.get('/api/reports/warehouse', {
+            params: { startDate, endDate, reportType }
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const exportWarehouseReportAPI = async (startDate, endDate, reportType) => {
+    try {
+        const response = await axios.get('/api/reports/warehouse/export', {
+            params: { startDate, endDate, reportType },
+            responseType: 'blob'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const fetchProductReportAPI = async (filterType) => {
+    try {
+        const response = await axios.get('/api/reports/products', {
+            params: { filterType }
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const exportProductReportAPI = async (filterType) => {
+    try {
+        const response = await axios.get('/api/reports/products/export', {
+            params: { filterType },
+            responseType: 'blob'
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+export const fetchDemandForecastAPI = async (productCode) => {
+    try {
+        const response = await axios.get('/api/forecast/demand', {
+            params: { productCode: productCode !== 'all' ? productCode : undefined }
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const fetchAllSettingsAPI = async () => {
+    try {
+        const response = await axios.get('/api/settings/list');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const createSettingAPI = async (key, value, description) => {
+    try {
+        const response = await axios.post('/api/settings/create', { key, value, description });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const updateSettingAPI = async (key, value, description) => {
+    try {
+        const response = await axios.put('/api/settings/update', { key, value, description });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const deleteSettingAPI = async (key) => {
+    try {
+        const response = await axios.delete('/api/settings/delete', { params: { key } });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const fetchLowStockAlertEnabledAPI = async () => {
+    try {
+        const response = await axios.get('/api/settings/low-stock-alert-enabled');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const fetchLowStockAlertEmailsAPI = async () => {
+    try {
+        const response = await axios.get('/api/settings/low-stock-alert-emails');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
+
+export const fetchAllProductsAPI = async () => {
+    try {
+        const response = await axios.get('/api/products');
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const updateMinStockAPI = async (productCode, minStock) => {
+    try {
+        const response = await axios.put(`/api/products/${productCode}`, { minStock });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const updateBatchMinStockAPI = async (updates) => {
+    try {
+        const response = await axios.put('/api/products/min-stock/batch', updates);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
