@@ -29,6 +29,7 @@ import {
 } from '@ant-design/icons';
 import moment from 'moment';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { fetchProductByCodeAPI, StockCheckAPI, fetchStockCheckByDate, exportStockCheckExcelByDate } from '../services/api.service';
 import { AuthContext } from '../components/context/auth.context';
 
 const { Text, Paragraph } = Typography;
@@ -58,6 +59,7 @@ const StockCheckScreen = () => {
     const productCodeInputRef = useRef(null);
     const scannerRef = useRef(null);
     const { user } = useContext(AuthContext);
+    const [selectedDate, setSelectedDate] = useState(null);
 
     useEffect(() => {
         form.setFieldsValue({
@@ -80,7 +82,8 @@ const StockCheckScreen = () => {
             scannerRef.current = new Html5QrcodeScanner('reader', config, false);
 
             scannerRef.current.render(
-                (decodedText) => {
+                async (decodedText) => {
+                    await scannerRef.current.clear();
                     itemScanForm.setFieldsValue({ productCode: decodedText });
                     handleAddOrFindProduct({ productCode: decodedText });
                     setIsScanning(false);
@@ -103,43 +106,72 @@ const StockCheckScreen = () => {
         };
     }, [isScanning, itemScanForm]);
 
-    const handleAddOrFindProduct = (values) => {
-        const { productCode } = values;
-        if (!productCode || productCode.trim() === '') {
-            message.error('Vui lòng nhập hoặc quét mã sản phẩm!');
+    const handleGetStockCheckByDate = (dateMoment) => {
+        if (!dateMoment) return;
+        setSelectedDate(dateMoment);
+        const date = dateMoment.format("YYYY-MM-DD");
+
+        fetchStockCheckByDate(date)
+            .then(res => {
+                const mappedItems = res.data.map(item => ({
+                    key: item.productCode,
+                    productCode: item.productCode,
+                    productName: item.productName,
+                    storageLocation: item.locationName,
+                    unit: item.unit,
+                    systemStock: item.systemQuantity,
+                    actualStock: item.actualQuantity,
+                    difference: item.difference,
+                    countStatus: item.status
+                }));
+
+                setCountSheetItems(mappedItems);
+            })
+            .catch(err => {
+                console.error("Lỗi khi lấy kiểm kê:", err);
+            });
+    };
+
+
+    const handleAddOrFindProduct = async (input) => {
+        const productCode = input?.target?.value || input?.productCode || input;
+        if (!productCode?.trim()) {
+            message.error('Vui lòng nhập mã sản phẩm');
             return;
         }
 
-        const existingItemIndex = countSheetItems.findIndex((item) => item.productCode === productCode);
-
-        if (existingItemIndex !== -1) {
-            message.info(`Sản phẩm "${productCode}" đã có trong danh sách. Bạn có thể cập nhật số lượng thực tế.`);
-        } else {
-            const productDetails = mockProductsMaster.find((p) => p.id === productCode);
-            if (productDetails) {
-                const newItem = {
-                    key: productDetails.id,
-                    productCode: productDetails.id,
-                    productName: productDetails.name,
-                    storageLocation: productDetails.storageLocation,
-                    unit: productDetails.unit,
-                    systemStock: productDetails.systemStock,
-                    actualStock: undefined,
-                    difference: 0,
-                    countStatus: 'Chưa kiểm kê',
-                };
-                setCountSheetItems((prevItems) => [...prevItems, newItem]);
-                message.success(`Đã thêm sản phẩm "${productDetails.name}" vào danh sách kiểm kê.`);
-            } else {
-                message.error(`Không tìm thấy thông tin cho mã sản phẩm: ${productCode}`);
+        try {
+            const product = await fetchProductByCodeAPI(productCode);
+            if (!product.data?.productCode) {
+                throw new Error('Sản phẩm không tồn tại');
             }
-        }
-        itemScanForm.resetFields();
-        if (productCodeInputRef.current) {
-            productCodeInputRef.current.focus();
+            const isExist = countSheetItems.some(item => item.productCode === product.data.productCode);
+            if (isExist) {
+                message.warning(`Sản phẩm "${product.data.productName}" đã có trong danh sách`);
+                return;
+            }
+            const newItem = {
+                key: product.data.productCode,
+                productCode: product.data.productCode,
+                productName: product.data.productName,
+                storageLocation: product.data.locationName,
+                unit: product.data.unit,
+                systemStock: product.data.quantity,
+                actualStock: undefined,
+                difference: 0,
+                countStatus: 'Chưa kiểm kê'
+            };
+
+            setCountSheetItems(prev => [...prev, newItem]);
+            message.success(`Đã thêm "${product.data.productName}"`);
+            itemScanForm.resetFields();
+            productCodeInputRef.current?.focus();
+
+        } catch (error) {
+            console.error('Lỗi API:', error.response?.data || error.message);
+            message.error(`Không tìm thấy sản phẩm "${productCode}"`);
         }
     };
-
     const handleActualStockChange = (value, productCode) => {
         setCountSheetItems((prevItems) =>
             prevItems.map((item) => {
@@ -180,31 +212,42 @@ const StockCheckScreen = () => {
         }
     };
 
-    const finalizeCount = () => {
-        console.log('Phiếu kiểm kê hoàn tất:', {
-            sheetInfo: form.getFieldsValue(),
-            items: countSheetItems,
-        });
-        message.success('Đã hoàn tất kiểm kê kho!');
+    const username = user.username;
+    const finalizeCount = async () => {
+        const payload = countSheetItems.map(item => ({
+            productCode: item.productCode,
+            actualQuantity: item.actualStock,
+        }));
+
+        try {
+            const response = await StockCheckAPI(username, payload);
+            message.success('Đã hoàn tất kiểm kê kho!');
+            console.log('Kết quả từ server:', response.data);
+        } catch (error) {
+            console.error('Lỗi khi gửi kiểm kê:', error);
+            message.error('Có lỗi xảy ra khi hoàn tất kiểm kê.');
+        }
     };
 
-    const handleExportExcel = () => {
+    const handleExportExcel = async () => {
         if (countSheetItems.length === 0) {
             message.warning('Không có dữ liệu để xuất báo cáo.');
             return;
         }
-        const dataToExport = countSheetItems.map((item) => ({
-            'Mã Hàng': item.productCode,
-            'Tên Hàng': item.productName,
-            'Vị Trí': item.storageLocation,
-            'ĐVT': item.unit,
-            'Tồn Hệ Thống': item.systemStock,
-            'Tồn Thực Tế': item.actualStock === undefined || item.actualStock === null ? 'Chưa nhập' : item.actualStock,
-            'Chênh Lệch': item.actualStock === undefined || item.actualStock === null ? '' : item.difference,
-            'Trạng Thái': item.countStatus,
-        }));
-        console.log('Dữ liệu xuất Excel:', dataToExport);
-        message.success("Đã giả lập xuất báo cáo Excel thành công! (Cần tích hợp thư viện 'xlsx')");
+
+        if (!selectedDate) {
+            message.warning('Vui lòng chọn ngày kiểm kê để xuất báo cáo.');
+            return;
+        }
+
+        try {
+            const date = selectedDate.format("YYYY-MM-DD");
+            await exportStockCheckExcelByDate(date);
+            message.success('Xuất báo cáo Excel thành công!');
+        } catch (error) {
+            message.error('Xuất báo cáo thất bại!');
+            console.error('Lỗi khi xuất báo cáo Excel:', error);
+        }
     };
 
     const showSendReportModal = () => {
@@ -231,7 +274,6 @@ const StockCheckScreen = () => {
     };
 
     const columns = [
-        { title: '#', key: 'index', render: (text, record, index) => index + 1, width: 50, align: 'center' },
         { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120, fixed: 'left' },
         { title: 'Tên Hàng', dataIndex: 'productName', key: 'productName', width: 250, ellipsis: true, fixed: 'left' },
         { title: 'Vị Trí Lưu Trữ', dataIndex: 'storageLocation', key: 'storageLocation', width: 150, ellipsis: true },
@@ -346,7 +388,11 @@ const StockCheckScreen = () => {
                                 label="Ngày Kiểm Kê"
                                 rules={[{ required: true, message: 'Vui lòng chọn ngày kiểm kê!' }]}
                             >
-                                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                                <DatePicker
+                                    style={{ width: "100%" }}
+                                    format="YYYY-MM-DD"
+                                    onChange={handleGetStockCheckByDate}
+                                />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12} md={6}>
@@ -372,7 +418,11 @@ const StockCheckScreen = () => {
                 bordered={false}
                 style={{ marginBottom: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}
             >
-                <Form form={itemScanForm} onFinish={handleAddOrFindProduct} layout="inline">
+                <Form
+                    form={itemScanForm}
+                    onFinish={handleAddOrFindProduct}
+                    layout="inline"
+                >
                     <Form.Item
                         name="productCode"
                         label="Mã sản phẩm"
@@ -383,11 +433,18 @@ const StockCheckScreen = () => {
                             ref={productCodeInputRef}
                             prefix={<BarcodeOutlined />}
                             placeholder="Quét mã vạch hoặc nhập mã sản phẩm"
+                            onPressEnter={() => {
+                                itemScanForm.submit();
+                            }}
                             allowClear
                         />
                     </Form.Item>
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            icon={<SearchOutlined />}
+                        >
                             Tìm / Thêm vào DS
                         </Button>
                     </Form.Item>
@@ -474,13 +531,6 @@ const StockCheckScreen = () => {
                         disabled={countSheetItems.length === 0}
                     >
                         Tải Báo Cáo (Excel)
-                    </Button>
-                    <Button
-                        icon={<MailOutlined />}
-                        onClick={showSendReportModal}
-                        disabled={countSheetItems.length === 0}
-                    >
-                        Gửi Báo Cáo Qua Email
                     </Button>
                 </Space>
             </Row>
