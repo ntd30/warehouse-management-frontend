@@ -17,6 +17,7 @@ import {
     Divider,
     Tag,
     notification,
+    Collapse,
 } from 'antd';
 import {
     PlusOutlined,
@@ -24,6 +25,8 @@ import {
     DeleteOutlined,
 } from '@ant-design/icons';
 import { createUpdateRoleAPI, createUserAPI, deleteRoleAPI, deleteUserAPI, fetchAllPermissionsAPI, fetchAllRolesAPI, fetchAllUsersAPI, ganNhieuQuyenChoVaiTro, goNhieuQuyenChoVaiTro, updateUserAPI } from '../services/api.service';
+
+const { Panel } = Collapse;
 
 const UserPermissionScreen = () => {
     const [loadingTable, setLoadingTable] = useState(false);
@@ -103,6 +106,20 @@ const UserPermissionScreen = () => {
         }
     };
 
+    // Nhóm permissions theo module và lọc các module không mong muốn
+    const excludedModules = ['NGƯỜI DÙNG', 'VAI TRÒ', 'QUYỀN HẠN', 'QR_CODE'];
+    const groupedPermissions = permissions.reduce((acc, perm) => {
+        const module = perm.module?.toUpperCase() || 'OTHER';
+        // Chỉ thêm vào accumulator nếu module không nằm trong danh sách loại trừ
+        if (!excludedModules.includes(module)) {
+            if (!acc[module]) {
+                acc[module] = [];
+            }
+            acc[module].push(perm);
+        }
+        return acc;
+    }, {});
+
     // Role Functions
     const loadRoles = async () => {
         setLoadingTable(true);
@@ -168,8 +185,8 @@ const UserPermissionScreen = () => {
                     : currentPermissions;
 
                 // Tính toán quyền cần gán và gỡ
-                const permissionsToAssign = permissions.filter(id => !formattedCurrentPermissions.includes(id)); // Quyền mới
-                const permissionsToRevoke = formattedCurrentPermissions.filter(id => !permissions.includes(id)); // Quyền bị gỡ
+                const permissionsToAssign = permissions.filter(id => !formattedCurrentPermissions.includes(id));
+                const permissionsToRevoke = formattedCurrentPermissions.filter(id => !permissions.includes(id));
 
                 // Gán quyền mới
                 if (permissionsToAssign.length > 0) {
@@ -293,50 +310,45 @@ const UserPermissionScreen = () => {
 
     const handleUserModalOk = async (values) => {
         try {
-            setLoadingBtn(true)
+            setLoadingBtn(true);
 
-            const { id, username, email, password, fullName, isActive, roleId } = values
+            const { id, username, email, password, fullName, isActive, roleId } = values;
 
             if (editingUser) {
-                const resUpdateUser = await updateUserAPI(
-                    id, fullName, isActive, roleId
-                )
+                const resUpdateUser = await updateUserAPI(id, fullName, isActive, roleId);
 
                 if (resUpdateUser.data) {
-                    await loadUsers()
+                    await loadUsers();
                     setIsUserModalVisible(false);
                     userForm.resetFields();
                     notification.success({
                         message: "Cập nhật người dùng",
-                        description: "Cập nhật người dùng mới thành công"
-                    })
+                        description: "Cập nhật người dùng mới thành công",
+                    });
                 } else {
                     notification.error({
                         message: "Lỗi Cập nhật mới người dùng",
-                        description: JSON.stringify(resUpdateUser)
-                    })
+                        description: JSON.stringify(resUpdateUser),
+                    });
                 }
             } else {
-                const resCreateUser = await createUserAPI(
-                    username, email, password, fullName, isActive, roleId
-                )
+                const resCreateUser = await createUserAPI(username, email, password, fullName, isActive, roleId);
 
                 if (resCreateUser.data) {
-                    await loadUsers()
+                    await loadUsers();
                     setIsUserModalVisible(false);
                     userForm.resetFields();
                     notification.success({
                         message: "Thêm người dùng",
-                        description: "Thêm người dùng mới thành công"
-                    })
+                        description: "Thêm người dùng mới thành công",
+                    });
                 } else {
                     notification.error({
                         message: "Lỗi thêm mới người dùng",
-                        description: JSON.stringify(resCreateUser)
-                    })
+                        description: JSON.stringify(resCreateUser),
+                    });
                 }
             }
-
         } catch (error) {
             notification.error({
                 message: 'Lỗi Hệ Thống',
@@ -345,7 +357,7 @@ const UserPermissionScreen = () => {
         } finally {
             setLoadingBtn(false);
         }
-    }
+    };
 
     const handleDeleteUser = async (idDelete) => {
         const res = await deleteUserAPI(idDelete);
@@ -486,13 +498,19 @@ const UserPermissionScreen = () => {
                     )}
                     <Form.Item name="permissions" label="Gán Quyền Hạn Cho Vai Trò">
                         <Checkbox.Group style={{ width: '100%' }}>
-                            <Row gutter={[8, 8]}>
-                                {permissions.map(permission => (
-                                    <Col span={12} key={permission.id}>
-                                        <Checkbox value={permission.id}>{permission.name}</Checkbox>
-                                    </Col>
+                            <Collapse accordion style={{ width: '100%' }}>
+                                {Object.keys(groupedPermissions).map(module => (
+                                    <Panel header={module} key={module}>
+                                        <Row gutter={[8, 8]}>
+                                            {groupedPermissions[module].map(permission => (
+                                                <Col span={12} key={permission.id}>
+                                                    <Checkbox value={permission.id}>{permission.name}</Checkbox>
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    </Panel>
                                 ))}
-                            </Row>
+                            </Collapse>
                         </Checkbox.Group>
                     </Form.Item>
                 </Form>
@@ -537,7 +555,6 @@ const UserPermissionScreen = () => {
             </Modal>
         </div>
     );
-
 };
 
 export default UserPermissionScreen;
