@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Form, Input, Button, Table, Space, Typography, message, Tabs, Modal, Popconfirm, Select, InputNumber } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, BellOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import axios from 'axios'; // Sử dụng axios để lấy danh sách sản phẩm nếu cần
-import { fetchAllSettingsAPI, createSettingAPI, updateSettingAPI, deleteSettingAPI, fetchLowStockAlertEmailsAPI, fetchAllProductsAPI, updateMinStockAPI, updateBatchMinStockAPI } from '../services/api.service';
+import { fetchAllSettingsAPI, createSettingAPI, updateSettingAPI, deleteSettingAPI, fetchLowStockAlertEmailsAPI, fetchAllProductsAPI, updateMinStockAPI, updateBatchMinStockAPI, fetchProductsPaginationAPI } from '../services/api.service';
 
 const { Paragraph } = Typography;
 
@@ -20,6 +20,10 @@ const SettingsScreen = () => {
     const [alertRecipients, setAlertRecipients] = useState([]);
     const [loadingAlertSettings, setLoadingAlertSettings] = useState(false);
 
+    const [total, setTotal] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(5);
+
     // Lấy dữ liệu từ backend với xử lý token
     useEffect(() => {
         const fetchSettings = async () => {
@@ -31,27 +35,6 @@ const SettingsScreen = () => {
                 message.error('Lỗi khi lấy danh sách thiết lập');
             } finally {
                 setLoadingSettings(false);
-            }
-        };
-
-        const fetchProductsMinStock = async () => {
-            setLoadingMinStock(true);
-            try {
-                const response = await fetchAllProductsAPI();
-                if (response.data && Array.isArray(response.data)) {
-                    setProductsMinStock(response.data.map(p => ({
-                        key: p.id,
-                        productCode: p.productCode,
-                        productName: p.name,
-                        unit: p.unit,
-                        currentMinStock: p.minStock || 0,
-                        newMinStock: p.minStock || 0,
-                    })));
-                }
-            } catch (error) {
-                message.error('Lỗi khi lấy danh sách sản phẩm');
-            } finally {
-                setLoadingMinStock(false);
             }
         };
 
@@ -69,9 +52,34 @@ const SettingsScreen = () => {
         };
 
         fetchSettings();
-        fetchProductsMinStock();
         fetchAlertEmails();
     }, []);
+
+    useEffect(() => {
+        const fetchProductsMinStock = async () => {
+            setLoadingMinStock(true);
+            try {
+                const response = await fetchProductsPaginationAPI(currentPage, pageSize);
+                if (response.data && Array.isArray(response.data.content)) {
+                    setProductsMinStock(response.data.content.map(p => ({
+                        key: p.id,
+                        productCode: p.productCode,
+                        productName: p.name,
+                        unit: p.unit,
+                        currentMinStock: p.minStock || 0,
+                        newMinStock: p.minStock || 0,
+                    })));
+                    setTotal(response.data.totalElements || 0);
+                }
+            } catch (error) {
+                message.error('Lỗi khi lấy danh sách sản phẩm');
+            } finally {
+                setLoadingMinStock(false);
+            }
+        };
+
+        fetchProductsMinStock();
+    }, [currentPage, pageSize])
 
     const showSettingModal = (setting = null) => {
         setEditingSetting(setting);
@@ -206,6 +214,15 @@ const SettingsScreen = () => {
         },
     ];
 
+    const onChange = (pagination) => {
+        if (+pagination.current !== +currentPage) {
+            setCurrentPage(+pagination.current);
+        }
+        if (+pagination.pageSize !== +pageSize) {
+            setPageSize(+pagination.pageSize);
+        }
+    };
+
     const settingTabItems = [
         {
             label: <Space><SafetyCertificateOutlined />Thiết lập Hệ thống</Space>,
@@ -246,9 +263,20 @@ const SettingsScreen = () => {
                             rowKey="key"
                             bordered
                             size="small"
-                            pagination={false}
                             scroll={{ x: 'max-content' }}
                             loading={loadingMinStock}
+                            pagination={{
+                                current: currentPage,
+                                pageSize: pageSize,
+                                showSizeChanger: true,
+                                total: total,
+                                showTotal: (total, range) => (
+                                    <div>
+                                        {range[0]}-{range[1]} trên {total} rows
+                                    </div>
+                                ),
+                            }}
+                            onChange={onChange}
                         />
                     </Card>
                     <Card

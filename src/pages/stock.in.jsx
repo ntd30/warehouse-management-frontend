@@ -55,13 +55,11 @@ const StockInScreen = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                // Fetch suppliers
                 const supplierResponse = await fetchSuppliersAPI();
                 if (supplierResponse.data) {
                     setSuppliers(supplierResponse.data.map(s => ({ id: s.name, name: s.name })));
                 }
 
-                // Fetch locations
                 const locationResponse = await fetchLocationsAPI();
                 if (locationResponse.data) {
                     setLocations(locationResponse.data.map(l => ({ id: l.name, name: l.name })));
@@ -224,7 +222,7 @@ const StockInScreen = () => {
 
         try {
             const res = await warehouse(formData);
-            console.log("resxxx", res)
+            console.log("resxxx", res);
             if (res.data) {
                 message.success('Đã lưu phiếu nhập thành công!');
                 form.resetFields();
@@ -239,7 +237,7 @@ const StockInScreen = () => {
                 message.error('Lỗi khi lưu phiếu nhập.');
             }
         } catch (error) {
-            message.error('Lỗi khi lưu phiếu nhập: ');
+            message.error('Lỗi khi lưu phiếu nhập: ' + error.message);
         }
     };
 
@@ -253,11 +251,20 @@ const StockInScreen = () => {
             });
         },
         beforeUpload: file => {
+            // Chỉ cho phép upload 1 ảnh, từ chối nếu đã có ảnh
+            if (fileList.length >= 1) {
+                message.error('Chỉ được phép tải lên 1 ảnh!');
+                return false; // Ngăn upload thêm
+            }
             setFileList(prevFileList => [...prevFileList, file]);
-            return false;
+            return false; // Ngăn upload tự động, chỉ thêm vào fileList
         },
         fileList,
-        multiple: true,
+        multiple: false, // Tắt chế độ multiple để chỉ chọn 1 file mỗi lần
+        accept: 'image/*', // Chỉ cho phép upload file ảnh
+        showUploadList: {
+            showRemoveIcon: true, // Hiển thị nút xóa
+        },
     };
 
     const columns = [
@@ -461,12 +468,16 @@ const StockInScreen = () => {
 
                 <Card title="Đính Kèm Hóa Đơn / Chứng Từ" bordered={false} style={{ marginBottom: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
                     <Upload {...uploadProps} listType="picture-card">
-                        <div>
-                            <PlusOutlined />
-                            <div style={{ marginTop: 8 }}>Tải lên</div>
-                        </div>
+                        {fileList.length === 0 && ( // Chỉ hiển thị nút "Tải lên" nếu chưa có ảnh
+                            <div>
+                                <PlusOutlined />
+                                <div style={{ marginTop: 8 }}>Tải lên</div>
+                            </div>
+                        )}
                     </Upload>
-                    <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>Bạn có thể tải lên nhiều tệp. Các tệp sẽ được đính kèm khi lưu phiếu nhập.</Text>
+                    {/* <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                        Chỉ được phép tải lên 1 ảnh.
+                    </Text> */}
                 </Card>
 
                 <Row justify="end" style={{ marginTop: 24 }}>

@@ -410,7 +410,7 @@ const UserPermissionScreen = () => {
                     bordered
                     size="small"
                     scroll={{ x: 'max-content' }}
-                    pagination={{ pageSize: 5 }}
+                    pagination={{ pageSize: 2 }}
                 />
             </Card>
 
@@ -424,6 +424,7 @@ const UserPermissionScreen = () => {
                 cancelText="Hủy"
                 width={700}
                 destroyOnClose
+                okButtonProps={{loading:loadingBtn}}
             >
                 <Form form={roleForm} layout="vertical" onFinish={handleRoleModalOk}>
                     <Form.Item name="name" label="Tên Vai Trò" rules={[{ required: true, message: 'Vui lòng nhập tên vai trò!' }]}>
@@ -460,6 +461,7 @@ const UserPermissionScreen = () => {
                 okText={editingUser ? "Cập nhật" : "Thêm mới"}
                 cancelText="Hủy"
                 destroyOnClose
+                okButtonProps={{loading:loadingBtn}}
             >
                 <Form form={userForm} layout="vertical" onFinish={handleUserModalOk}>
                     <Form.Item name="id" label="Id" hidden>
