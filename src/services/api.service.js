@@ -39,6 +39,11 @@ export const StockOutAPI = (data) => {
     const URL_BACKEND = `/api/stock-out`;
     return axios.post(URL_BACKEND, data);
 }
+
+export const GetAllProduct = (data) => {
+    const URL_BACKEND = `/api/products`;
+    return axios.post(URL_BACKEND, data);
+}
 export const StockCheckAPI = (username, data) => {
     const URL_BACKEND = `/api/stockcheck/perform?username=${username}`;
     return axios.post(URL_BACKEND, data);
@@ -260,10 +265,10 @@ export const exportWarehouseReportAPI = async (startDate, endDate, reportType) =
     }
 };
 
-export const fetchProductReportAPI = async (filterType) => {
+export const fetchProductReportAPI = async (filterType, page = 0, size = 10, startDate, endDate) => {
     try {
         const response = await axios.get('/api/reports/products', {
-            params: { filterType }
+            params: { filterType, page, size, startDate, endDate }
         });
         return response;
     } catch (error) {
@@ -361,7 +366,7 @@ export const fetchAllProductsAPI = async () => {
 
 export const updateMinStockAPI = async (productCode, minStock) => {
     try {
-        const response = await axios.put(`/api/products/${productCode}`, { minStock });
+        const response = await axios.put(`/api/products/${productCode}/min-stock`, { minStock });
         return response;
     } catch (error) {
         throw error;
