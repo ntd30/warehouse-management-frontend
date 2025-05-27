@@ -168,7 +168,7 @@ export const createUserAPI = (username, email, password, fullName, isActive, rol
         isActive: isActive,
         roleId: roleId,
         address: '',
-        phoneNumber: ''
+        // phoneNumber: ''
     }
     return axios.post(URL_BACKEND, data)
 }
@@ -180,7 +180,7 @@ export const updateUserAPI = (id, fullName, isActive, roleId) => {
         isActive: isActive,
         roleId: roleId,
         address: '',
-        phoneNumber: '',
+        // phoneNumber: '',
     }
     return axios.put(URL_BACKEND, data)
 }
@@ -360,12 +360,8 @@ export const fetchAllProductsAPI = async () => {
 };
 
 export const updateMinStockAPI = async (productCode, minStock) => {
-    try {
-        const response = await axios.put(`/api/products/${productCode}`, { minStock });
-        return response;
-    } catch (error) {
-        throw error;
-    }
+    const URL_BACKEND = `api/products/${productCode}/min-stock`;
+    return axios.put(URL_BACKEND, { minStock });
 };
 
 export const updateBatchMinStockAPI = async (updates) => {

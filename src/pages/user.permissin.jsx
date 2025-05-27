@@ -60,6 +60,24 @@ const UserPermissionScreen = () => {
         loadUsers();
     }, [currentUser, pageSizeUser]);
 
+    const onChangeUser = (pagination) => {
+        if (+pagination.current !== +currentUser) {
+            setCurrentUser(+pagination.current);
+        }
+        if (+pagination.pageSize !== +pageSizeUser) {
+            setPageSizeUser(+pagination.pageSize);
+        }
+    };
+
+    const onChangeRole = (pagination) => {
+        if (+pagination.current !== +currentRole) {
+            setCurrentRole(+pagination.current);
+        }
+        if (+pagination.pageSize !== +pageSizeRole) {
+            setPageSizeRole(+pagination.pageSize);
+        }
+    };
+
     // Permission Functions
     const loadPermissions = async () => {
         setLoadingTable(true);
@@ -92,6 +110,7 @@ const UserPermissionScreen = () => {
             const res = await fetchAllRolesAPI(currentRole, pageSizeRole);
             if (res?.data?.content && Array.isArray(res.data.content)) {
                 setRoles(res.data.content);
+                setTotalRole(res.data.totalElements);
             } else {
                 setRoles([]);
                 notification.error({
@@ -247,6 +266,7 @@ const UserPermissionScreen = () => {
             const res = await fetchAllUsersAPI(currentUser, pageSizeUser);
             if (res?.data?.content && Array.isArray(res.data.content)) {
                 setUsers(res.data.content);
+                setTotalUser(res.data.totalElements);
             } else {
                 setUsers([]);
                 notification.error({
@@ -285,7 +305,7 @@ const UserPermissionScreen = () => {
                 if (resUpdateUser.data) {
                     await loadUsers()
                     setIsUserModalVisible(false);
-                    roleForm.resetFields();
+                    userForm.resetFields();
                     notification.success({
                         message: "Cập nhật người dùng",
                         description: "Cập nhật người dùng mới thành công"
@@ -304,7 +324,7 @@ const UserPermissionScreen = () => {
                 if (resCreateUser.data) {
                     await loadUsers()
                     setIsUserModalVisible(false);
-                    roleForm.resetFields();
+                    userForm.resetFields();
                     notification.success({
                         message: "Thêm người dùng",
                         description: "Thêm người dùng mới thành công"
@@ -394,7 +414,22 @@ const UserPermissionScreen = () => {
                     <Card title="Quản lý Vai Trò" bordered={false} style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}
                         extra={<Button type="dashed" icon={<PlusOutlined />} onClick={() => showRoleModal()}>Thêm Vai Trò</Button>}
                     >
-                        <Table loading={loadingTable} columns={roleColumns} dataSource={roles} rowKey="id" size="small" pagination={{ pageSize: 5 }} scroll={{ x: 'max-content' }} />
+                        <Table
+                            loading={loadingTable} columns={roleColumns} dataSource={roles}
+                            rowKey="id" size="small" scroll={{ x: 'max-content' }}
+                            onChange={onChangeRole}
+                            pagination={{
+                                current: currentRole,
+                                pageSize: pageSizeRole,
+                                showSizeChanger: true,
+                                total: totalRole,
+                                showTotal: (total, range) => (
+                                    <div>
+                                        {range[0]}-{range[1]} trên {total} rows
+                                    </div>
+                                ),
+                            }}
+                        />
                     </Card>
                 </Col>
             </Row>
@@ -410,7 +445,18 @@ const UserPermissionScreen = () => {
                     bordered
                     size="small"
                     scroll={{ x: 'max-content' }}
-                    pagination={{ pageSize: 2 }}
+                    onChange={onChangeUser}
+                    pagination={{
+                        current: currentUser,
+                        pageSize: pageSizeUser,
+                        showSizeChanger: true,
+                        total: totalUser,
+                        showTotal: (total, range) => (
+                            <div>
+                                {range[0]}-{range[1]} trên {total} rows
+                            </div>
+                        ),
+                    }}
                 />
             </Card>
 
@@ -424,7 +470,7 @@ const UserPermissionScreen = () => {
                 cancelText="Hủy"
                 width={700}
                 destroyOnClose
-                okButtonProps={{loading:loadingBtn}}
+                okButtonProps={{ loading: loadingBtn }}
             >
                 <Form form={roleForm} layout="vertical" onFinish={handleRoleModalOk}>
                     <Form.Item name="name" label="Tên Vai Trò" rules={[{ required: true, message: 'Vui lòng nhập tên vai trò!' }]}>
@@ -461,7 +507,7 @@ const UserPermissionScreen = () => {
                 okText={editingUser ? "Cập nhật" : "Thêm mới"}
                 cancelText="Hủy"
                 destroyOnClose
-                okButtonProps={{loading:loadingBtn}}
+                okButtonProps={{ loading: loadingBtn }}
             >
                 <Form form={userForm} layout="vertical" onFinish={handleUserModalOk}>
                     <Form.Item name="id" label="Id" hidden>

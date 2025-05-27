@@ -177,12 +177,12 @@ const ProductManagement = () => {
             ellipsis: true,
             width: 250,
         },
-        {
-            title: 'Đơn vị tính',
-            dataIndex: 'unit',
-            key: 'unit',
-            width: 120,
-        },
+        // {
+        //     title: 'Đơn vị tính',
+        //     dataIndex: 'unit',
+        //     key: 'unit',
+        //     width: 120,
+        // },
         {
             title: 'Tồn kho hiện tại',
             dataIndex: 'inventory',
