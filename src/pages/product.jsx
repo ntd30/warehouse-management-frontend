@@ -9,11 +9,13 @@ import {
     Form,
     Tooltip,
     message,
+    Input,
 } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
     EyeOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
 import ProductDetailModal from '../components/product/product.detail';
 import ProductForm from '../components/product/product.form';
@@ -21,12 +23,15 @@ import { fetchProductByCodeAPI, fetchProductsPaginationAPI, updateProductAPI } f
 
 // Component chính để quản lý sản phẩm
 const ProductManagement = () => {
-    // State để quản lý danh sách sản phẩm và phân trang
-    const [products, setProducts] = useState([]);
+    // State để quản lý danh sách sản phẩm
+    const [allProducts, setAllProducts] = useState([]); // Lưu toàn bộ sản phẩm
+    const [filteredProducts, setFilteredProducts] = useState([]); // Danh sách sản phẩm sau khi lọc
+    const [displayedProducts, setDisplayedProducts] = useState([]); // Danh sách hiển thị trên trang hiện tại
     const [total, setTotal] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
     const [loading, setLoading] = useState(false);
+    const [searchText, setSearchText] = useState(''); // State cho giá trị tìm kiếm
 
     // State để quản lý modal và form
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -36,28 +41,68 @@ const ProductManagement = () => {
     const [formLoading, setFormLoading] = useState(false);
     const [form] = Form.useForm();
 
-    // Hàm tải danh sách sản phẩm
-    const loadProducts = async (page, size) => {
+    // Hàm tải toàn bộ sản phẩm
+    const loadAllProducts = async () => {
         setLoading(true);
-        const result = await fetchProductsPaginationAPI(page, size);
+        try {
+            let allData = [];
+            let current = 1;
+            let totalPages = 1;
 
-        if (result.data) {
-            setProducts(result.data.content || []);
-            setTotal(result.data.totalElements || 0);
-        } else {
+            // Lặp qua các trang để lấy tất cả sản phẩm
+            while (current <= totalPages) {
+                const result = await fetchProductsPaginationAPI(current, pageSize);
+                if (result.data) {
+                    allData = [...allData, ...(result.data.content || [])];
+                    totalPages = result.data.totalPages || 1;
+                    setTotal(result.data.totalElements || 0);
+                } else {
+                    notification.error({
+                        message: 'Lỗi',
+                        description: result.message,
+                    });
+                    break;
+                }
+                current++;
+            }
+
+            setAllProducts(allData);
+            setFilteredProducts(allData); // Khởi tạo danh sách lọc
+            setDisplayedProducts(allData.slice(0, pageSize)); // Hiển thị trang đầu tiên
+        } catch (error) {
             notification.error({
                 message: 'Lỗi',
-                description: result.message,
+                description: 'Không thể tải danh sách sản phẩm.',
             });
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
-    // Tải danh sách sản phẩm khi trang hoặc kích thước trang thay đổi
+    // Tải danh sách sản phẩm khi component mount
     useEffect(() => {
-        loadProducts(currentPage, pageSize);
-    }, [currentPage, pageSize]);
+        loadAllProducts();
+    }, []);
+
+    // Cập nhật sản phẩm hiển thị khi thay đổi trang hoặc kích thước trang
+    useEffect(() => {
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        setDisplayedProducts(filteredProducts.slice(start, end));
+    }, [currentPage, pageSize, filteredProducts]);
+
+    // Hàm xử lý tìm kiếm
+    const handleSearch = (value) => {
+        setSearchText(value);
+        const filtered = allProducts.filter(
+            (product) =>
+                product.productCode.toLowerCase().includes(value.toLowerCase()) ||
+                product.name.toLowerCase().includes(value.toLowerCase())
+        );
+        setFilteredProducts(filtered);
+        setCurrentPage(1); // Reset về trang 1 khi tìm kiếm
+        setDisplayedProducts(filtered.slice(0, pageSize)); // Hiển thị trang đầu tiên của kết quả lọc
+    };
 
     // Hàm hiển thị modal thêm/sửa
     const showModal = (product = null) => {
@@ -87,12 +132,11 @@ const ProductManagement = () => {
             if (result.data) {
                 notification.success({
                     message: editingProduct ? 'Cập nhật thành công' : 'Thêm thành công',
-                    description: `Sản phẩm ${values.name} đã được ${editingProduct ? 'cập nhật' : 'thêm'
-                        } thành công!`,
+                    description: `Sản phẩm ${values.name} đã được ${editingProduct ? 'cập nhật' : 'thêm'} thành công!`,
                 });
                 setIsModalVisible(false);
                 form.resetFields();
-                loadProducts(currentPage, pageSize);
+                loadAllProducts(); // Tải lại toàn bộ sản phẩm sau khi cập nhật
             } else {
                 notification.error({
                     message: 'Lỗi',
@@ -100,35 +144,11 @@ const ProductManagement = () => {
                 });
             }
         } catch (error) {
-            // notification.error({
-            //     message: 'Lỗi',
-            //     description: result.message,
-            // });
-            message.error("Lỗi hệ thống")
+            message.error("Lỗi hệ thống");
         } finally {
             setFormLoading(false);
         }
     };
-
-    // Hàm xóa sản phẩm
-    // const handleDelete = async (id) => {
-    //     setLoading(true);
-    //     const result = await deleteProduct(id);
-    //     setLoading(false);
-
-    //     if (result.success) {
-    //         notification.success({
-    //             message: 'Xóa thành công',
-    //             description: 'Sản phẩm đã được xóa!',
-    //         });
-    //         loadProducts(currentPage, pageSize);
-    //     } else {
-    //         notification.error({
-    //             message: 'Lỗi',
-    //             description: result.message,
-    //         });
-    //     }
-    // };
 
     // Hàm xem chi tiết sản phẩm
     const handleViewDetail = async (code) => {
@@ -177,12 +197,6 @@ const ProductManagement = () => {
             ellipsis: true,
             width: 250,
         },
-        // {
-        //     title: 'Đơn vị tính',
-        //     dataIndex: 'unit',
-        //     key: 'unit',
-        //     width: 120,
-        // },
         {
             title: 'Tồn kho hiện tại',
             dataIndex: 'inventory',
@@ -214,16 +228,6 @@ const ProductManagement = () => {
                             onClick={() => showModal(record)}
                         />
                     </Tooltip>
-                    {/* <Popconfirm
-                        title="Bạn chắc chắn muốn xóa sản phẩm này?"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Xóa"
-                        cancelText="Hủy"
-                    >
-                        <Tooltip title="Xóa sản phẩm">
-                            <Button icon={<DeleteOutlined />} danger />
-                        </Tooltip>
-                    </Popconfirm> */}
                 </Space>
             ),
         },
@@ -247,34 +251,40 @@ const ProductManagement = () => {
                     borderRadius: '8px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.09)',
                 }}
-            // extra={
-            //     <Button
-            //         type="primary"
-            //         icon={<PlusOutlined />}
-            //         onClick={() => showModal()}
-            //     >
-            //         Thêm Sản phẩm
-            //     </Button>
-            // }
             >
+                <Space style={{ marginBottom: 16 }}>
+                    <Input
+                        placeholder="Tìm kiếm theo mã hoặc tên sản phẩm"
+                        prefix={<SearchOutlined />}
+                        value={searchText}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        style={{ width: 300 }}
+                    />
+                    {/* <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => showModal()}
+                    >
+                        Thêm Sản phẩm
+                    </Button> */}
+                </Space>
                 <Table
                     loading={loading}
                     columns={columns}
-                    dataSource={products}
+                    dataSource={displayedProducts} // Sử dụng danh sách hiển thị
                     rowKey="id"
                     onChange={onChange}
                     pagination={{
                         current: currentPage,
                         pageSize: pageSize,
                         showSizeChanger: true,
-                        total: total,
+                        total: filteredProducts.length, // Tổng số bản ghi dựa trên danh sách lọc
                         showTotal: (total, range) => (
                             <div>
                                 {range[0]}-{range[1]} trên {total} rows
                             </div>
                         ),
                     }}
-                // scroll={{ x: 'max-content' }}
                 />
             </Card>
 
