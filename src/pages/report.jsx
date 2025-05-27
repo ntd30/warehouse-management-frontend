@@ -12,20 +12,20 @@ import {
     Typography,
     message,
     Tabs,
-    Tag,
+    Tag
 } from 'antd';
 import {
     BarChartOutlined,
     LineChartOutlined,
     FileExcelOutlined,
     FilterOutlined,
-    WarningTwoTone,
+    WarningTwoTone
 } from '@ant-design/icons';
 import moment from 'moment';
 import * as XLSX from 'xlsx';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title as ChartTitle, Tooltip, Legend } from 'chart.js';
-import { fetchWarehouseReportAPI, exportWarehouseReportAPI, fetchProductReportAPI, exportProductReportAPI, fetchDemandForecastAPI } from '../services/api.service';
+import { fetchWarehouseReportAPI, exportWarehouseReportAPI, fetchProductReportAPI, exportProductReportAPI, fetchDemandForecastAPI, GetAllProduct } from '../services/api.service';
 import axios from 'axios';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTitle, Tooltip, Legend);
@@ -39,32 +39,54 @@ const ReportsScreen = () => {
     const [expSlowForm] = Form.useForm();
     const [forecastForm] = Form.useForm();
     const [inventoryReportData, setInventoryReportData] = useState([]);
+    const [inventoryPagination, setInventoryPagination] = useState({ page: 0, size: 10, totalElements: 0, totalPages: 0 });
     const [loadingInventory, setLoadingInventory] = useState(false);
     const [expSlowReportData, setExpSlowReportData] = useState([]);
+    const [expSlowPagination, setExpSlowPagination] = useState({ page: 0, size: 10, totalElements: 0, totalPages: 0 });
     const [loadingExpSlow, setLoadingExpSlow] = useState(false);
     const [forecastData, setForecastData] = useState([]);
     const [loadingForecast, setLoadingForecast] = useState(false);
     const [products, setProducts] = useState([]);
     const reportType = Form.useWatch('reportType', inventoryForm) || 'daily';
 
-    // Lấy danh sách sản phẩm để hiển thị trong Select
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const response = await axios.get('/api/products'); // Giả định có API lấy danh sách sản phẩm
-                if (response.data && Array.isArray(response.data)) {
-                    setProducts(response.data);
-                }
-            } catch (error) {
-                console.error('[fetchProducts] Lỗi khi lấy danh sách sản phẩm:', error);
-                message.error('Lỗi khi lấy danh sách sản phẩm.');
-            }
-        };
-        fetchProducts();
-    }, []);
+ useEffect(() => {
+    const fetchProducts = async () => {
+        try {
+            const startOfMonth = moment().startOf('month').toISOString(); // 01/05/2025 00:00:00
+            const currentDate = moment().toISOString(); // 27/05/2025 09:26:00
 
-    // Xử lý báo cáo tồn kho
-    const onFinishInventoryReport = async (values) => {
+            console.log('Calling fetchProductReportAPI with:', { filterType: 'all', page: 0, size: 1000, startDate: startOfMonth, endDate: currentDate });
+            const response = await fetchProductReportAPI('all', 0, 1000, startOfMonth, currentDate);
+
+            console.log('API Response:', response);
+
+            if (response.data && Array.isArray(response.data.content)) {
+                console.log('Products data:', response.data.content);
+                const formattedProducts = response.data.content
+                    .filter(item => item && item.productCode) // Lọc bỏ các item không hợp lệ
+                    .map(item => ({
+                        productCode: item.productCode,
+                        productName: item.productName || `Sản phẩm ${item.productCode}`
+                    }));
+                console.log('Formatted Products:', formattedProducts); // Debug sau khi ánh xạ
+                setProducts(formattedProducts);
+                if (formattedProducts.length === 0) {
+                    console.warn('No products found in the report.');
+                    message.warning('Không tìm thấy sản phẩm trong báo cáo.');
+                }
+            } else {
+                throw new Error('Dữ liệu từ API không hợp lệ hoặc rỗng.');
+            }
+        } catch (error) {
+            console.error('[fetchProducts] Lỗi khi lấy danh sách sản phẩm:', error);
+            message.error('Lỗi khi lấy danh sách sản phẩm: ' + (error.message || 'Kiểm tra console để biết thêm chi tiết.'));
+            setProducts([]);
+        }
+    };
+    fetchProducts();
+}, []);
+
+    const onFinishInventoryReport = async (values, page = 0, size = 10) => {
         setLoadingInventory(true);
         try {
             const { dateRange, reportType } = values;
@@ -84,13 +106,13 @@ const ReportsScreen = () => {
                 throw new Error('Vui lòng chọn khoảng thời gian.');
             }
 
-            const response = await fetchWarehouseReportAPI(startDate, endDate);
-            if (!response.data || !Array.isArray(response.data)) {
+            const response = await fetchWarehouseReportAPI(startDate, endDate, page, size);
+            if (!response.data || !Array.isArray(response.data.content)) {
                 throw new Error('Dữ liệu từ API không hợp lệ.');
             }
 
-            const formattedData = response.data.map((item, index) => ({
-                key: index.toString(),
+            const formattedData = response.data.content.map((item, index) => ({
+                key: (page * size + index).toString(),
                 productCode: item.productCode,
                 productName: item.productName || `Sản phẩm ${item.productCode}`,
                 unit: item.unit || 'Cái',
@@ -101,6 +123,12 @@ const ReportsScreen = () => {
             }));
 
             setInventoryReportData(formattedData);
+            setInventoryPagination({
+                page: response.data.page,
+                size: response.data.size,
+                totalElements: response.data.totalElements,
+                totalPages: response.data.totalPages
+            });
             message.success('Đã tải báo cáo tồn kho thành công.');
         } catch (error) {
             message.error(error.message || 'Lỗi khi tải báo cáo tồn kho.');
@@ -110,17 +138,16 @@ const ReportsScreen = () => {
         }
     };
 
-    // Xử lý báo cáo hàng sắp hết hạn/chậm luân chuyển
-    const onFinishExpSlowReport = async (values) => {
+    const onFinishExpSlowReport = async (values, page = 0, size = 10) => {
         setLoadingExpSlow(true);
         try {
-            const response = await fetchProductReportAPI(values.filterType);
-            if (!response.data || !Array.isArray(response.data)) {
+            const response = await fetchProductReportAPI(values.filterType, page, size);
+            if (!response.data || !Array.isArray(response.data.content)) {
                 throw new Error('Dữ liệu từ API không hợp lệ.');
             }
 
-            const formattedData = response.data.map((item, index) => ({
-                key: index.toString(),
+            const formattedData = response.data.content.map((item, index) => ({
+                key: (page * size + index).toString(),
                 productCode: item.productCode,
                 productName: item.productName || `Sản phẩm ${item.productCode}`,
                 expiryDate: item.expirationDate,
@@ -130,6 +157,12 @@ const ReportsScreen = () => {
             }));
 
             setExpSlowReportData(formattedData);
+            setExpSlowPagination({
+                page: response.data.page,
+                size: response.data.size,
+                totalElements: response.data.totalElements,
+                totalPages: response.data.totalPages
+            });
             message.success(`Đã tải báo cáo ${values.filterType === 'near_expiration' ? 'sắp hết hạn' : values.filterType === 'slow_moving' ? 'chậm luân chuyển' : 'tất cả sản phẩm'}.`);
         } catch (error) {
             message.error('Lỗi khi tải báo cáo hàng sắp hết hạn/chậm luân chuyển.');
@@ -139,14 +172,10 @@ const ReportsScreen = () => {
         }
     };
 
-    // Xử lý dự báo nhu cầu nhập hàng
     const onFinishForecastReport = async (values) => {
-        console.log('[onFinishForecastReport] Bắt đầu xử lý dự báo:', values);
         setLoadingForecast(true);
         try {
             const response = await fetchDemandForecastAPI(values.productCode);
-            console.log('[onFinishForecastReport] Phản hồi từ API:', response);
-
             if (!response.data || !Array.isArray(response.data)) {
                 throw new Error('Dữ liệu từ API không hợp lệ.');
             }
@@ -162,7 +191,6 @@ const ReportsScreen = () => {
             setForecastData(formattedData);
             message.success('Đã tải dự báo nhu cầu nhập hàng thành công.');
         } catch (error) {
-            console.error('[onFinishForecastReport] Lỗi khi tải dự báo:', error);
             message.error(error.message || 'Lỗi khi tải dự báo nhu cầu nhập hàng.');
             setForecastData([]);
         } finally {
@@ -170,7 +198,6 @@ const ReportsScreen = () => {
         }
     };
 
-    // Xuất Excel cho báo cáo sản phẩm
     const handleExportProductReportExcel = async (filterType) => {
         try {
             const response = await exportProductReportAPI(filterType);
@@ -187,11 +214,10 @@ const ReportsScreen = () => {
             document.body.removeChild(link);
             message.success('Xuất file Excel thành công!');
         } catch (error) {
-            message.error('Lỗi khi xuất Excel từ API.');
+            message.error('Lỗi khi xuất Excel front API.');
         }
     };
 
-    // Xuất Excel cho dự báo nhu cầu
     const handleExportForecastExcel = (data) => {
         if (!data || data.length === 0) {
             message.warning('Không có dữ liệu để xuất.');
@@ -213,7 +239,6 @@ const ReportsScreen = () => {
         }
     };
 
-    // Cột cho bảng tồn kho
     const inventoryColumns = [
         { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', fixed: 'left', width: 120 },
         { title: 'Tên Hàng Hóa', dataIndex: 'productName', key: 'productName', fixed: 'left', width: 200, ellipsis: true },
@@ -224,7 +249,6 @@ const ReportsScreen = () => {
         { title: 'Tồn Cuối Kỳ', dataIndex: 'closingStock', key: 'closingStock', align: 'right', width: 120, render: (text) => <Text strong>{text}</Text> }
     ];
 
-    // Cột cho bảng hàng sắp hết hạn/chậm luân chuyển
     const expSlowColumns = [
         { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120 },
         { title: 'Tên Hàng Hóa', dataIndex: 'productName', key: 'productName', width: 200, ellipsis: true },
@@ -259,7 +283,6 @@ const ReportsScreen = () => {
         { title: 'Tồn Kho Hiện Tại', dataIndex: 'currentStock', key: 'currentStock', align: 'right', width: 150 }
     ];
 
-    // Cột cho bảng dự báo nhu cầu
     const forecastColumns = [
         { title: 'Mã Sản Phẩm', dataIndex: 'productCode', key: 'productCode', width: 120 },
         { title: 'Số Lượng Dự Báo', dataIndex: 'forecastQuantity', key: 'forecastQuantity', align: 'right', width: 150 },
@@ -267,7 +290,13 @@ const ReportsScreen = () => {
         { title: 'Lượng Nhập Gợi Ý', dataIndex: 'suggestedIn', key: 'suggestedIn', align: 'right', width: 150, render: (text) => <Text strong>{text}</Text> }
     ];
 
-    // Hàm hiển thị biểu đồ tồn kho
+    const handleTableChange = (pagination, form, setter, fetchFunction) => {
+        const { current, pageSize } = pagination;
+        form.validateFields().then(values => {
+            fetchFunction(values, current - 1, pageSize);
+        });
+    };
+
     const renderInventoryChart = () => {
         if (inventoryReportData.length === 0) {
             return <Paragraph type="secondary" style={{ textAlign: 'center', padding: '20px' }}>Không có dữ liệu để hiển thị biểu đồ.</Paragraph>;
@@ -313,7 +342,6 @@ const ReportsScreen = () => {
         );
     };
 
-    // Hàm hiển thị biểu đồ dự báo nhu cầu
     const renderForecastChart = () => {
         if (forecastData.length === 0) {
             return <Paragraph type="secondary" style={{ textAlign: 'center', padding: '20px' }}>Không có dữ liệu để hiển thị biểu đồ.</Paragraph>;
@@ -366,7 +394,6 @@ const ReportsScreen = () => {
         );
     };
 
-    // Cấu hình các tab
     const tabItems = [
         {
             label: <Space><BarChartOutlined />Báo Cáo Tồn Kho</Space>,
@@ -374,7 +401,7 @@ const ReportsScreen = () => {
             children: (
                 <>
                     <Card title="Bộ Lọc Báo Cáo Tồn Kho" bordered={false} style={{ marginBottom: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
-                        <Form form={inventoryForm} layout="vertical" onFinish={onFinishInventoryReport}>
+                        <Form form={inventoryForm} layout="vertical" onFinish={(values) => onFinishInventoryReport(values)}>
                             <Row gutter={16}>
                                 <Col xs={24} sm={12} md={10}>
                                     <Form.Item
@@ -454,7 +481,14 @@ const ReportsScreen = () => {
                             bordered
                             size="small"
                             scroll={{ x: 'max-content' }}
-                            pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: ['10', '20', '50'] }}
+                            pagination={{
+                                current: inventoryPagination.page + 1,
+                                pageSize: inventoryPagination.size,
+                                total: inventoryPagination.totalElements,
+                                showSizeChanger: true,
+                                pageSizeOptions: ['10', '20', '50'],
+                                onChange: (page, pageSize) => handleTableChange({ current: page, pageSize }, inventoryForm, setInventoryReportData, onFinishInventoryReport)
+                            }}
                         />
                     </Card>
                     {renderInventoryChart()}
@@ -526,7 +560,7 @@ const ReportsScreen = () => {
             children: (
                 <>
                     <Card title="Bộ Lọc Báo Cáo Sản Phẩm" bordered={false} style={{ marginBottom: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}>
-                        <Form form={expSlowForm} layout="vertical" onFinish={onFinishExpSlowReport}>
+                        <Form form={expSlowForm} layout="vertical" onFinish={(values) => onFinishExpSlowReport(values)}>
                             <Row gutter={16}>
                                 <Col xs={24} sm={12} md={8}>
                                     <Form.Item
@@ -570,7 +604,14 @@ const ReportsScreen = () => {
                             bordered
                             size="small"
                             scroll={{ x: 'max-content' }}
-                            pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: ['10', '20', '50'] }}
+                            pagination={{
+                                current: expSlowPagination.page + 1,
+                                pageSize: expSlowPagination.size,
+                                total: expSlowPagination.totalElements,
+                                showSizeChanger: true,
+                                pageSizeOptions: ['10', '20', '50'],
+                                onChange: (page, pageSize) => handleTableChange({ current: page, pageSize }, expSlowForm, setExpSlowReportData, onFinishExpSlowReport)
+                            }}
                         />
                     </Card>
                 </>
