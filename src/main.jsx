@@ -8,8 +8,7 @@ import RegisterPage from './pages/auth/register.jsx';
 import LayoutAdmin from './pages/layout.admin.jsx';
 import DashboardPage from './pages/dashboard.jsx';
 import { AuthWrapper } from './components/context/auth.context.jsx';
-import StockInScreen from './pages/stock.in.jsx';
-import StockOutScreen from './pages/stock.out.jsx';
+
 import ReportsScreen from './pages/report.jsx';
 import SettingsScreen from './pages/setting.jsx';
 import StockCheckScreen from './pages/stock.check.jsx';
@@ -17,6 +16,8 @@ import PrivateRoute from './pages/private.route.jsx';
 import ErrorPage from './pages/error.jsx';
 import UserPermissionScreen from './pages/user.permissin.jsx';
 import ProductManagement from './pages/product.jsx';
+import { StockInScreen } from './pages/stock.in.page.jsx';
+import StockOutScreen from './pages/stock.out.page.jsx';
 
 const router = createBrowserRouter([
   {

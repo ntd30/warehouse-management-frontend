@@ -242,6 +242,14 @@ export const updateProductAPI = (productCode, values) => {
     return axios.put(URL_BACKEND, data);
 }
 
+export const fetchStockInHistoryAPI = () => {
+    
+}
+
+export const fetchStockOutHistoryAPI = () => {
+    
+}
+
 export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {
     try {
         const response = await axios.get('/api/reports/warehouse', {

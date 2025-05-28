@@ -27,13 +27,13 @@ import {
 } from '@ant-design/icons';
 import moment from 'moment';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { fetchProductByCodeAPI, warehouse } from '../services/api.service';
-import { createSupplierAPI, createLocationAPI, fetchSuppliersAPI, fetchLocationsAPI } from '../services/api.service';
-import { AuthContext } from '../components/context/auth.context';
+import { fetchProductByCodeAPI, warehouse } from '../../services/api.service';
+import { createSupplierAPI, createLocationAPI, fetchSuppliersAPI, fetchLocationsAPI } from '../../services/api.service';
+import { AuthContext } from '../context/auth.context';
 
 const { Title, Text } = Typography;
 
-const StockInScreen = () => {
+const StockIn = () => {
     const [form] = Form.useForm();
     const [itemForm] = Form.useForm();
     const [addedItems, setAddedItems] = useState([]);
@@ -505,4 +505,4 @@ const StockInScreen = () => {
     );
 };
 
-export default StockInScreen;
+export default StockIn;

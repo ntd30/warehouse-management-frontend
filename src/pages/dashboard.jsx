@@ -189,8 +189,8 @@ const DashboardPage = () => {
     const statCards = [
         { title: 'Tổng SP khác nhau', value: inventoryData.totalProducts, icon: <DropboxOutlined />, precision: 0, suffix: 'sản phẩm', tooltip: 'Đếm theo mã sản phẩm' },
         { title: 'Tổng SL tồn kho', value: inventoryData.totalStock, icon: <BoxPlotOutlined />, precision: 0, suffix: 'đơn vị', tooltip: 'Tổng đơn vị hàng hóa' },
-        { title: 'SL nhập trong tháng', value: inventoryData.stockInThisMonth, icon: <LoginOutlined />, precision: 0, suffix: 'đơn vị', tooltip: 'Tính đến hiện tại' },
-        { title: 'SL xuất trong tháng', value: inventoryData.stockOutThisMonth, icon: <LogoutOutlined />, precision: 0, suffix: 'đơn vị', tooltip: 'Tính đến hiện tại' },
+        { title: 'SL nhập', value: inventoryData.stockInThisMonth, icon: <LoginOutlined />, precision: 0, suffix: 'đơn vị', tooltip: 'Tính đến hiện tại' },
+        { title: 'SL xuất', value: inventoryData.stockOutThisMonth, icon: <LogoutOutlined />, precision: 0, suffix: 'đơn vị', tooltip: 'Tính đến hiện tại' },
         { title: 'Kiểm kho gần nhất', value: inventoryData.lastStockCheck, icon: <CalendarOutlined />, isDate: true, tooltip: 'Ngày hoàn thành kiểm kê' },
     ];
 
