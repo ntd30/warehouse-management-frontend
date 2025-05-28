@@ -492,7 +492,7 @@ const UserPermissionScreen = () => {
                         <Input.TextArea rows={2} />
                     </Form.Item>
                     {editingRole && (
-                        <Form.Item name="id" label="ID Vai Trò (Không thể sửa)">
+                        <Form.Item name="id" label="ID Vai Trò (Không thể sửa)" hidden>
                             <Input disabled />
                         </Form.Item>
                     )}

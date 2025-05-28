@@ -1,6 +1,6 @@
 import { Tabs } from "antd";
 import StockOut from "../components/stockout/stock.out";
-import { StockOutHistory } from "../components/stockout/stock.out.history";
+import StockOutHistory from "../components/stockout/stock.out.history";
 
 const StockOutScreen = () => {
   return (

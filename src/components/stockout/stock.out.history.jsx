@@ -3,7 +3,21 @@ import { Button, Card, Col, message, Modal, Row, Table, Tooltip, Typography } fr
 import moment from "moment";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchStockOutHistoryAPI } from "../../services/api.service";
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
 
+// Đăng ký font DejaVu Sans để hỗ trợ tiếng Việt
+pdfMake.fonts = {
+    DejaVuSans: {
+        normal: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/DejaVuSans/DejaVuSans.ttf',
+        bold: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/DejaVuSans/DejaVuSans-Bold.ttf',
+        italics: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/DejaVuSans/DejaVuSans-Oblique.ttf',
+        bolditalics: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/DejaVuSans/DejaVuSans-BoldOblique.ttf',
+    },
+};
+
+// Đăng ký font vào vfs
+pdfMake.vfs = pdfFonts?.pdfMake?.vfs;
 
 const mockStockOutHistory = [
     {
@@ -35,7 +49,7 @@ const mockUnits = [
     { id: 'Kg', name: 'Kg' },
 ];
 
-export const StockOutHistory = () => {
+const StockOutHistory = () => {
     const [history, setHistory] = useState(mockStockOutHistory);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState(null);
@@ -58,6 +72,66 @@ export const StockOutHistory = () => {
         setIsDetailModalVisible(true);
     }, []);
 
+    const handleExportPDF = useCallback(() => {
+        if (!selectedRecord) return;
+
+        const totalQuantity = selectedRecord.products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+
+        const documentDefinition = {
+            content: [
+                { text: 'PHIẾU XUẤT KHO', style: 'header', alignment: 'center' },
+                { text: `Mã phiếu: ${selectedRecord.id}`, style: 'subheader' },
+                { text: `Ngày xuất: ${moment(selectedRecord.dateOut).format('YYYY-MM-DD HH:mm:ss')}`, style: 'subheader' },
+                { text: `Người nhận: ${selectedRecord.destination}`, style: 'subheader' },
+                { text: `Lý do: ${selectedRecord.reason}`, style: 'subheader' },
+                { text: '', margin: [0, 10] }, // Khoảng cách
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: [100, '*', 80, 80],
+                        body: [
+                            [
+                                { text: 'Mã Hàng', style: 'tableHeader' },
+                                { text: 'Tên Hàng Hóa', style: 'tableHeader' },
+                                { text: 'Số Lượng', style: 'tableHeader', alignment: 'right' },
+                                { text: 'ĐVT', style: 'tableHeader' },
+                            ],
+                            ...selectedRecord.products.map((p) => [
+                                p.productCode,
+                                p.productName,
+                                { text: p.quantity, alignment: 'right' },
+                                mockUnits.find((u) => u.id === p.unit)?.name || p.unit,
+                            ]),
+                            [
+                                { text: 'Tổng cộng', colSpan: 2, bold: true },
+                                {},
+                                { text: totalQuantity, alignment: 'right', bold: true },
+                                {},
+                            ],
+                        ],
+                    },
+                    layout: 'lightHorizontalLines',
+                },
+            ],
+            styles: {
+                header: { fontSize: 18, bold: true, margin: [0, 0, 0, 20] },
+                subheader: { fontSize: 12, margin: [0, 5, 0, 5] },
+                tableHeader: { bold: true, fontSize: 12, fillColor: '#16A085', color: 'white' },
+            },
+            defaultStyle: {
+                font: 'DejaVuSans',
+            },
+        };
+
+        try {
+            pdfMake.createPdf(documentDefinition).download(`PhieuXuatKho_${selectedRecord.id}.pdf`);
+            message.success('Đã xuất file PDF thành công!');
+        } catch (error) {
+            message.error('Lỗi khi xuất file PDF.');
+            console.error(error);
+        }
+    }, [selectedRecord]);
+
     const detailColumns = useMemo(
         () => [
             { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120 },
@@ -76,9 +150,7 @@ export const StockOutHistory = () => {
 
     const historyColumns = useMemo(
         () => [
-            {
-                title: 'Mã Stuart: Mã Phiếu Xuất', dataIndex: 'id', key: 'id', width: 120, ellipsis: true
-            },
+            { title: 'Mã Phiếu Xuất', dataIndex: 'id', key: 'id', width: 120, ellipsis: true },
             {
                 title: 'Ngày Xuất',
                 dataIndex: 'dateOut',
@@ -124,7 +196,14 @@ export const StockOutHistory = () => {
                 title={`Chi Tiết Phiếu Xuất ${selectedRecord?.id}`}
                 open={isDetailModalVisible}
                 onCancel={() => setIsDetailModalVisible(false)}
-                footer={null}
+                footer={[
+                    <Button key="export" type="primary" onClick={handleExportPDF}>
+                        Xuất PDF
+                    </Button>,
+                    <Button key="cancel" onClick={() => setIsDetailModalVisible(false)}>
+                        Đóng
+                    </Button>,
+                ]}
                 width={800}
             >
                 {selectedRecord && (
@@ -181,3 +260,5 @@ export const StockOutHistory = () => {
         </>
     );
 };
+
+export default StockOutHistory;

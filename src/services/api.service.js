@@ -242,12 +242,18 @@ export const updateProductAPI = (productCode, values) => {
     return axios.put(URL_BACKEND, data);
 }
 
-export const fetchStockInHistoryAPI = () => {
-    
+export const fetchStockInHistoryAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/stock-in/stockin/forms?page=${current}&size=${pageSize}`;
+    return axios.get(URL_BACKEND);
+}
+
+export const fetchFormDetailsAPI = (id) => {
+    const URL_BACKEND = `/api/stock-in/forms/${id}`;
+    return axios.get(URL_BACKEND);
 }
 
 export const fetchStockOutHistoryAPI = () => {
-    
+
 }
 
 export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {

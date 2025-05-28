@@ -6,93 +6,120 @@ import {
     Form,
     Button,
     DatePicker,
-    Upload,
     Table,
-    Space,
-    Typography,
     message,
-    Divider,
-    Tooltip,
     Modal,
-    Tabs,
-    Tag,
+    Typography,
+    Tooltip,
+    Descriptions,
 } from 'antd';
-import {
-    HistoryOutlined,
-} from '@ant-design/icons';
+import { EyeOutlined } from '@ant-design/icons';
 import moment from 'moment';
-import { fetchStockInHistoryAPI } from '../../services/api.service';
+import { fetchFormDetailsAPI, fetchStockInHistoryAPI } from '../../services/api.service';
 
-export const StockInHistory = () => {
+const { Text } = Typography;
+
+const StockInHistory = () => {
     const [historyForm] = Form.useForm();
     const [historyData, setHistoryData] = useState([]);
     const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0, totalPages: 0 });
     const [loading, setLoading] = useState(false);
+    const [total, setTotal] = useState(0);
+    const [current, setCurrent] = useState(1);
+    const [pageSize, setPageSize] = useState(5);
+    const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+    const [selectedForm, setSelectedForm] = useState(null);
 
-    const fetchHistory = useCallback(
-        async (values, page = 0, size = 10) => {
-            setLoading(true);
-            try {
-                const { dateRange } = values;
-                let startDate, endDate;
-                if (dateRange && dateRange.length === 2) {
-                    startDate = dateRange[0].startOf('day').toISOString();
-                    endDate = dateRange[1].endOf('day').toISOString();
-                } else {
-                    startDate = moment().startOf('month').toISOString();
-                    endDate = moment().endOf('day').toISOString();
-                }
-
-                const response = await fetchStockInHistoryAPI(startDate, endDate, page, size);
-                if (!response.data || !Array.isArray(response.data.content)) {
-                    throw new Error('Dữ liệu từ API không hợp lệ.');
-                }
-
-                const formattedData = response.data.content.map((item, index) => ({
-                    key: (page * size + index).toString(),
-                    voucherCode: item.code,
-                    dateIn: moment(item.dateIn).format('DD/MM/YYYY HH:mm:ss'),
-                    username: item.username,
-                    note: item.note,
-                    totalItems: item.products?.length || 0,
-                    totalQuantity: item.products?.reduce((sum, p) => sum + (p.quantity || 0), 0) || 0,
-                    products: item.products || [],
-                }));
-
-                setHistoryData(formattedData);
-                setPagination({
-                    page: response.data.page,
-                    size: response.data.size,
-                    totalElements: response.data.totalElements,
-                    totalPages: response.data.totalPages,
-                });
-                message.success('Đã tải lịch sử nhập kho thành công.');
-            } catch (error) {
-                message.error(error.message || 'Lỗi khi tải lịch sử nhập kho.');
-                setHistoryData([]);
-            } finally {
-                setLoading(false);
+    const fetchHistory = async () => {
+        setLoading(true);
+        try {
+            const response = await fetchStockInHistoryAPI(current, pageSize);
+            if (!response.data || !Array.isArray(response.data.content)) {
+                throw new Error('Dữ liệu từ API không hợp lệ.');
             }
-        },
-        []
-    );
 
-    // Initial fetch with default date range
+            setTotal(response.data.totalElements);
+
+            const formattedData = response.data.content.map((item, index) => ({
+                key: (current * pageSize + index).toString(),
+                id: item.id, // Lưu id để gọi API chi tiết
+                voucherCode: item.code,
+                dateIn: moment(item.createdAt).format('DD/MM/YYYY HH:mm:ss'),
+                username: item.username,
+                note: item.note,
+                totalItems: item.products?.length || 0,
+                totalQuantity: item.products?.reduce((sum, p) => sum + (p.quantity || 0), 0) || 0,
+                products: item.products || [],
+            }));
+
+            setHistoryData(formattedData);
+            message.success('Đã tải lịch sử nhập kho thành công.');
+        } catch (error) {
+            message.error(error.message || 'Lỗi khi tải lịch sử nhập kho.');
+            setHistoryData([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        historyForm.setFieldsValue({
-            dateRange: [moment().startOf('month'), moment()],
-        });
-        fetchHistory({ dateRange: [moment().startOf('month'), moment()] });
-    }, [historyForm, fetchHistory]);
+        fetchHistory();
+    }, [current, pageSize]);
 
-    const handleTableChange = useCallback(
-        (pagination) => {
-            const { current, pageSize } = pagination;
-            historyForm.validateFields().then((values) => {
-                fetchHistory(values, current - 1, pageSize);
+    const onChange = (pagination) => {
+        if (+pagination.current !== +current) {
+            setCurrent(+pagination.current);
+        }
+        if (+pagination.pageSize !== +pageSize) {
+            setPageSize(+pagination.pageSize);
+        }
+    };
+
+    const handleViewDetail = async (id) => {
+        let formDetails = await fetchFormDetailsAPI(id);
+        if (formDetails) {
+            formDetails = formDetails.data;
+            setSelectedForm({
+                id: formDetails.id,
+                code: formDetails.code,
+                note: formDetails.note,
+                createdAt: moment(formDetails.createdAt).format('DD/MM/YYYY HH:mm:ss'),
+                username: formDetails.username,
+                details: formDetails?.details?.map((detail, index) => ({
+                    key: index,
+                    productName: detail.productName,
+                    supplierName: detail.supplierName,
+                    quantity: detail.quantity,
+                    unitPrice: detail.unitPrice,
+                    locationName: detail.locationName,
+                })),
             });
-        },
-        [historyForm, fetchHistory]
+            setIsDetailModalVisible(true);
+        }
+    };
+
+    const detailColumns = useMemo(
+        () => [
+            { title: 'Tên Sản Phẩm', dataIndex: 'productName', key: 'productName', width: 200 },
+            { title: 'Nhà Cung Cấp', dataIndex: 'supplierName', key: 'supplierName', width: 150 },
+            {
+                title: 'Số Lượng Nhập',
+                dataIndex: 'quantity',
+                key: 'quantity',
+                width: 120,
+                align: 'right',
+            },
+            {
+                title: 'Đơn Giá',
+                dataIndex: 'unitPrice',
+                key: 'unitPrice',
+                width: 120,
+                align: 'right',
+                render: (price) => price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }),
+            },
+            { title: 'Vị Trí Lưu Trữ', dataIndex: 'locationName', key: 'locationName', width: 150 },
+        ],
+        []
     );
 
     const columns = useMemo(
@@ -106,8 +133,6 @@ export const StockInHistory = () => {
                 render: (text) => <Text>{text}</Text>,
             },
             { title: 'Người Nhập', dataIndex: 'username', key: 'username', width: 150 },
-            { title: 'Số Mặt Hàng', dataIndex: 'totalItems', key: 'totalItems', align: 'right', width: 120 },
-            { title: 'Tổng Số Lượng', dataIndex: 'totalQuantity', key: 'totalQuantity', align: 'right', width: 120 },
             {
                 title: 'Ghi Chú',
                 dataIndex: 'note',
@@ -121,44 +146,12 @@ export const StockInHistory = () => {
                 width: 100,
                 align: 'center',
                 render: (_, record) => (
-                    <Button
-                        type="link"
-                        onClick={() => {
-                            Modal.info({
-                                title: `Chi Tiết Phiếu Nhập ${record.voucherCode}`,
-                                content: (
-                                    <Table
-                                        columns={[
-                                            { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120 },
-                                            { title: 'Tên Hàng', dataIndex: 'productName', key: 'productName', ellipsis: true },
-                                            { title: 'Số Lượng', dataIndex: 'quantity', key: 'quantity', align: 'right', width: 100 },
-                                            { title: 'ĐVT', dataIndex: 'unit', key: 'unit', width: 80 },
-                                            {
-                                                title: 'Nhà Cung Cấp',
-                                                dataIndex: 'supplierName',
-                                                key: 'supplierName',
-                                                ellipsis: true,
-                                            },
-                                            {
-                                                title: 'Vị Trí',
-                                                dataIndex: 'locationName',
-                                                key: 'locationName',
-                                                ellipsis: true,
-                                            },
-                                        ]}
-                                        dataSource={record.products.map((p, index) => ({ ...p, key: index }))}
-                                        pagination={false}
-                                        size="small"
-                                        scroll={{ x: 'max-content' }}
-                                    />
-                                ),
-                                width: 800,
-                                okText: 'Đóng',
-                            });
-                        }}
-                    >
-                        Xem
-                    </Button>
+                    <Tooltip title="Xem chi tiết">
+                        <Button
+                            icon={<EyeOutlined />}
+                            onClick={() => handleViewDetail(record.id)}
+                        />
+                    </Tooltip>
                 ),
             },
         ],
@@ -167,41 +160,6 @@ export const StockInHistory = () => {
 
     return (
         <>
-            <Card
-                title="Bộ Lọc Lịch Sử Nhập Kho"
-                bordered={false}
-                style={{ marginBottom: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}
-            >
-                <Form form={historyForm} layout="vertical" onFinish={fetchHistory}>
-                    <Row gutter={16}>
-                        <Col xs={24} sm={12} md={10}>
-                            <Form.Item
-                                name="dateRange"
-                                label="Khoảng Thời Gian"
-                                rules={[{ required: true, message: 'Vui lòng chọn khoảng thời gian!' }]}
-                            >
-                                <DatePicker.RangePicker
-                                    style={{ width: '100%' }}
-                                    format="DD/MM/YYYY"
-                                    disabledDate={(current) => current && current > moment().endOf('day')}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12} md={8}>
-                            <Form.Item label=" ">
-                                <Button
-                                    type="primary"
-                                    htmlType="submit"
-                                    icon={<HistoryOutlined />}
-                                    loading={loading}
-                                >
-                                    Xem Lịch Sử
-                                </Button>
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                </Form>
-            </Card>
             <Card
                 title="Kết Quả Lịch Sử Nhập Kho"
                 bordered={false}
@@ -215,15 +173,74 @@ export const StockInHistory = () => {
                     size="small"
                     scroll={{ x: 'max-content' }}
                     pagination={{
-                        current: pagination.page + 1,
-                        pageSize: pagination.size,
-                        total: pagination.totalElements,
+                        current: current,
+                        pageSize: pageSize,
                         showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50'],
-                        onChange: handleTableChange,
+                        total: total,
+                        showTotal: (total, range) => (
+                            <div>
+                                {range[0]}-{range[1]} trên {total} rows
+                            </div>
+                        ),
                     }}
+                    onChange={onChange}
                 />
             </Card>
+
+            <Modal
+                title={`Phiếu Nhập ${selectedForm?.code || ''}`}
+                open={isDetailModalVisible}
+                onCancel={() => setIsDetailModalVisible(false)}
+                footer={[
+                    <Button key="close" onClick={() => setIsDetailModalVisible(false)}>
+                        Đóng
+                    </Button>,
+                ]}
+                width={800}
+            >
+                {selectedForm && (
+                    <>
+                        <Descriptions bordered column={2} style={{ marginBottom: 24 }}>
+                            <Descriptions.Item label="Mã Phiếu Nhập">{selectedForm.code}</Descriptions.Item>
+                            <Descriptions.Item label="Người Nhập">{selectedForm.username}</Descriptions.Item>
+                            <Descriptions.Item label="Ghi Chú">{selectedForm.note || '-'}</Descriptions.Item>
+                            <Descriptions.Item label="Ngày Tạo">{selectedForm.createdAt}</Descriptions.Item>
+                        </Descriptions>
+                        <Typography.Title level={4}>Chi Tiết Phiếu Nhập</Typography.Title>
+                        <Table
+                            columns={detailColumns}
+                            dataSource={selectedForm.details}
+                            pagination={false}
+                            bordered
+                            size="small"
+                            scroll={{ x: 'max-content' }}
+                            summary={(pageData) => {
+                                let totalQuantity = 0;
+                                let totalAmount = 0;
+                                pageData.forEach(({ quantity, unitPrice }) => {
+                                    totalQuantity += quantity || 0;
+                                    totalAmount += (quantity || 0) * (unitPrice || 0);
+                                });
+                                return (
+                                    <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 'bold' }}>
+                                        <Table.Summary.Cell index={0}>Tổng cộng</Table.Summary.Cell>
+                                        <Table.Summary.Cell index={1} />
+                                        <Table.Summary.Cell index={2} align="right">
+                                            {totalQuantity}
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={3} align="right">
+                                            {totalAmount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={4} />
+                                    </Table.Summary.Row>
+                                );
+                            }}
+                        />
+                    </>
+                )}
+            </Modal>
         </>
     );
 };
+
+export default StockInHistory;

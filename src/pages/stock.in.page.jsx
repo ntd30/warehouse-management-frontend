@@ -9,8 +9,8 @@ import {
     HistoryOutlined,
 } from '@ant-design/icons';
 import { AuthContext } from '../components/context/auth.context';
-import { StockInHistory } from '../components/stockin/stock.in.history';
 import StockIn from '../components/stockin/stock.in';
+import StockInHistory from '../components/stockin/stock.in.history';
 
 export const StockInScreen = () => {
     const [form] = Form.useForm();
