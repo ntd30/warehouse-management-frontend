@@ -85,6 +85,7 @@ const StockInHistory = () => {
                 note: formDetails.note,
                 createdAt: moment(formDetails.createdAt).format('DD/MM/YYYY HH:mm:ss'),
                 username: formDetails.username,
+                fullName: formDetails.fullName,
                 details: formDetails?.details?.map((detail, index) => ({
                     key: index,
                     unit: detail.unit,

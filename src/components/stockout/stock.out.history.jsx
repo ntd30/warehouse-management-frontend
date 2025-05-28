@@ -237,7 +237,7 @@ const StockOutHistory = () => {
 
     const historyColumns = useMemo(
         () => [
-            { title: 'Mã Phiếu Xuất', dataIndex: 'code', key: 'code', width: 150, ellipsis: true },
+            { title: 'Mã Phiếu Xuất', dataIndex: 'code', key: 'code', width: 180 },
             {
                 title: 'Nhân viên xuất kho',
                 dataIndex: ['currentUser', 'fullName'],

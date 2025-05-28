@@ -16,7 +16,7 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import { AuthContext } from "../components/context/auth.context";
 const { Sider, Content } = Layout;
 
-// Thêm thuộc tính module (in hoa) vào mỗi menu item
+// Menu items
 const menuItems = [
     {
         label: <Link to="">Dashboard</Link>,
@@ -85,42 +85,51 @@ const LayoutAdmin = () => {
     const itemsDropdown = [
         ...(user && user.id
             ? [
-                  {
-                      label: (
-                          <label
-                              style={{ cursor: "pointer" }}
-                              onClick={handleLogout}
-                          >
-                              Đăng xuất
-                          </label>
-                      ),
-                      key: "logout",
-                      icon: <LogoutOutlined />,
-                  },
-              ]
+                {
+                    label: (
+                        <label
+                            style={{ cursor: "pointer" }}
+                            onClick={handleLogout}
+                        >
+                            Đăng xuất
+                        </label>
+                    ),
+                    key: "logout",
+                    icon: <LogoutOutlined />,
+                },
+            ]
             : []),
         ...(!user.id
             ? [
-                  {
-                      label: (
-                          <Link style={{ cursor: "pointer" }} to="/login">
-                              Đăng nhập
-                          </Link>
-                      ),
-                      key: "login",
-                      icon: <LoginOutlined />,
-                  },
-              ]
+                {
+                    label: (
+                        <Link style={{ cursor: "pointer" }} to="/login">
+                            Đăng nhập
+                        </Link>
+                    ),
+                    key: "login",
+                    icon: <LoginOutlined />,
+                },
+            ]
             : []),
     ];
 
-    // Lọc menuItems, luôn bao gồm mục Dashboard
-    const filteredMenuItems = menuItems.filter((item) =>
-        item.module === "DASHBOARD" || // Luôn giữ mục Dashboard
-        user?.permissions?.some(
-            (perm) => perm.module === item.module
-        )
-    );
+    // Lọc menuItems dựa trên permissions và roleName
+    const filteredMenuItems = menuItems.filter((item) => {
+        // Luôn hiển thị Dashboard
+        if (item.module === "DASHBOARD") {
+            return true;
+        }
+        // Chỉ admin (roleName === "ADMIN") được xem Báo cáo, Phân quyền, Cài đặt
+        if (
+            ["Báo cáo", "Người dùng", "Cài đặt"].includes(item.module) &&
+            user?.roleName?.toUpperCase() !== "ADMIN"
+        ) {
+            return false;
+        }
+        // Các mục khác kiểm tra permissions
+        return user?.permissions?.some((perm) => perm.module === item.module);
+    });
 
     return (
         <Layout style={{ minHeight: "100vh" }}>

@@ -433,9 +433,6 @@ const StockCheckScreen = () => {
                             ref={productCodeInputRef}
                             prefix={<BarcodeOutlined />}
                             placeholder="Quét mã vạch hoặc nhập mã sản phẩm"
-                            onPressEnter={() => {
-                                itemScanForm.submit();
-                            }}
                             allowClear
                         />
                     </Form.Item>

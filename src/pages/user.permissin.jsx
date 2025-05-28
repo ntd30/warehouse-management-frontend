@@ -380,7 +380,7 @@ const UserPermissionScreen = () => {
         { title: 'ID Vai Trò', dataIndex: 'id', key: 'id', width: 150, hidden: true },
         { title: 'Tên Vai Trò', dataIndex: 'name', key: 'name', width: 200, ellipsis: true },
         { title: 'Mô tả', dataIndex: 'description', key: 'description', ellipsis: true },
-        { title: 'Số Quyền Hạn', dataIndex: 'permissions', key: 'permissionsCount', width: 120, align: 'center', render: (record) => record?.length || 0 },
+        // { title: 'Số Quyền Hạn', dataIndex: 'permissions', key: 'permissionsCount', width: 120, align: 'center', render: (record) => record?.length || 0 },
         {
             title: 'Thao Tác',
             key: 'action',
