@@ -252,8 +252,14 @@ export const fetchFormDetailsAPI = (id) => {
     return axios.get(URL_BACKEND);
 }
 
-export const fetchStockOutHistoryAPI = () => {
+export const fetchStockOutHistoryAPI = (current, pageSize) => {
+    const URL_BACKEND = `/api/stock-out/forms?page=${current}&size=${pageSize}`;
+    return axios.get(URL_BACKEND);
+}
 
+export const fetchFormOutDetailsAPI = (id) => {
+    const URL_BACKEND = `/api/stock-out/forms/${id}`;
+    return axios.get(URL_BACKEND);
 }
 
 export const fetchWarehouseReportAPI = async (startDate, endDate, reportType) => {

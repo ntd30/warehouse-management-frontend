@@ -87,6 +87,7 @@ const StockInHistory = () => {
                 username: formDetails.username,
                 details: formDetails?.details?.map((detail, index) => ({
                     key: index,
+                    unit: detail.unit,
                     productName: detail.productName,
                     supplierName: detail.supplierName,
                     quantity: detail.quantity,
@@ -101,7 +102,6 @@ const StockInHistory = () => {
     const detailColumns = useMemo(
         () => [
             { title: 'Tên Sản Phẩm', dataIndex: 'productName', key: 'productName', width: 200 },
-            { title: 'Nhà Cung Cấp', dataIndex: 'supplierName', key: 'supplierName', width: 150 },
             {
                 title: 'Số Lượng Nhập',
                 dataIndex: 'quantity',
@@ -109,6 +109,9 @@ const StockInHistory = () => {
                 width: 120,
                 align: 'right',
             },
+            { title: 'Đơn vị tính', dataIndex: 'unit', key: 'unit', width: 100 },
+            { title: 'Nhà Cung Cấp', dataIndex: 'supplierName', key: 'supplierName', width: 150 },
+            { title: 'Vị Trí Lưu Trữ', dataIndex: 'locationName', key: 'locationName', width: 150 },
             {
                 title: 'Đơn Giá',
                 dataIndex: 'unitPrice',
@@ -117,7 +120,6 @@ const StockInHistory = () => {
                 align: 'right',
                 render: (price) => price.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }),
             },
-            { title: 'Vị Trí Lưu Trữ', dataIndex: 'locationName', key: 'locationName', width: 150 },
         ],
         []
     );
@@ -188,7 +190,7 @@ const StockInHistory = () => {
             </Card>
 
             <Modal
-                title={`Phiếu Nhập ${selectedForm?.code || ''}`}
+                title={`Phiếu Nhập`}
                 open={isDetailModalVisible}
                 onCancel={() => setIsDetailModalVisible(false)}
                 footer={[
@@ -196,7 +198,7 @@ const StockInHistory = () => {
                         Đóng
                     </Button>,
                 ]}
-                width={800}
+                width={"70%"}
             >
                 {selectedForm && (
                     <>
@@ -209,7 +211,7 @@ const StockInHistory = () => {
                         <Typography.Title level={4}>Chi Tiết Phiếu Nhập</Typography.Title>
                         <Table
                             columns={detailColumns}
-                            dataSource={selectedForm.details}
+                            dataSource={selectedForm?.details}
                             pagination={false}
                             bordered
                             size="small"
@@ -224,14 +226,15 @@ const StockInHistory = () => {
                                 return (
                                     <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 'bold' }}>
                                         <Table.Summary.Cell index={0}>Tổng cộng</Table.Summary.Cell>
-                                        <Table.Summary.Cell index={1} />
-                                        <Table.Summary.Cell index={2} align="right">
+                                        <Table.Summary.Cell index={1} align="right">
                                             {totalQuantity}
                                         </Table.Summary.Cell>
-                                        <Table.Summary.Cell index={3} align="right">
+                                        <Table.Summary.Cell index={2} />
+                                        <Table.Summary.Cell index={3} />
+                                        <Table.Summary.Cell index={4} />
+                                        <Table.Summary.Cell index={5} align="right">
                                             {totalAmount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                                         </Table.Summary.Cell>
-                                        <Table.Summary.Cell index={4} />
                                     </Table.Summary.Row>
                                 );
                             }}
