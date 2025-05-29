@@ -274,7 +274,7 @@ const StockCheckScreen = () => {
     };
 
     const columns = [
-        { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120, fixed: 'left' },
+        { title: 'Mã Hàng', dataIndex: 'productCode', key: 'productCode', width: 120 },
         { title: 'Tên Hàng', dataIndex: 'productName', key: 'productName', width: 250, ellipsis: true, fixed: 'left' },
         { title: 'Vị Trí Lưu Trữ', dataIndex: 'storageLocation', key: 'storageLocation', width: 150, ellipsis: true },
         { title: 'ĐVT', dataIndex: 'unit', key: 'unit', width: 80 },
@@ -476,7 +476,7 @@ const StockCheckScreen = () => {
                     rowKey="key"
                     bordered
                     size="small"
-                    scroll={{ x: 1500, y: 400 }}
+                    scroll={{ x: 'max-content', y: 400 }}
                     pagination={
                         countSheetItems.length > 10
                             ? { pageSize: 10, showSizeChanger: true, pageSizeOptions: ['10', '20', '50', '100'] }

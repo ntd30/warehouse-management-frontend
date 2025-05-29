@@ -23,6 +23,7 @@ import {
     PlusOutlined,
     EditOutlined,
     DeleteOutlined,
+    EyeOutlined,
 } from '@ant-design/icons';
 import { createUpdateRoleAPI, createUserAPI, deleteRoleAPI, deleteUserAPI, fetchAllPermissionsAPI, fetchAllRolesAPI, fetchAllUsersAPI, ganNhieuQuyenChoVaiTro, goNhieuQuyenChoVaiTro, updateUserAPI } from '../services/api.service';
 
@@ -388,10 +389,10 @@ const UserPermissionScreen = () => {
             align: 'center',
             render: (_, record) => (
                 <Space>
-                    <Tooltip title="Sửa vai trò"><Button icon={<EditOutlined />} onClick={() => showRoleModal(record)} /></Tooltip>
-                    <Popconfirm title="Bạn chắc chắn muốn xóa vai trò này?" onConfirm={() => handleDeleteRole(record.id)} okText="Xóa" cancelText="Hủy">
+                    <Tooltip title="Sửa vai trò"><Button icon={<EyeOutlined />} onClick={() => showRoleModal(record)} /></Tooltip>
+                    {/* <Popconfirm title="Bạn chắc chắn muốn xóa vai trò này?" onConfirm={() => handleDeleteRole(record.id)} okText="Xóa" cancelText="Hủy">
                         <Tooltip title="Xóa vai trò"><Button icon={<DeleteOutlined />} danger /></Tooltip>
-                    </Popconfirm>
+                    </Popconfirm> */}
                 </Space>
             ),
         },
@@ -424,7 +425,7 @@ const UserPermissionScreen = () => {
             <Row gutter={[16, 16]}>
                 <Col xs={24}>
                     <Card title="Quản lý Vai Trò" bordered={false} style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.09)' }}
-                        extra={<Button type="dashed" icon={<PlusOutlined />} onClick={() => showRoleModal()}>Thêm Vai Trò</Button>}
+                        // extra={<Button type="dashed" icon={<PlusOutlined />} onClick={() => showRoleModal()}>Thêm Vai Trò</Button>}
                     >
                         <Table
                             loading={loadingTable} columns={roleColumns} dataSource={roles}
@@ -476,13 +477,15 @@ const UserPermissionScreen = () => {
             <Modal
                 title={editingRole ? "Sửa Vai Trò" : "Thêm Vai Trò Mới"}
                 open={isRoleModalVisible}
-                onOk={() => roleForm.submit()}
+                footer={null}
+                // onOk={() => roleForm.submit()}
                 onCancel={() => { setIsRoleModalVisible(false); roleForm.resetFields(); }}
-                okText={editingRole ? "Cập nhật" : "Thêm mới"}
-                cancelText="Hủy"
+                // okText={editingRole ? "Cập nhật" : "Thêm mới"}
+
+                // cancelText="Hủy"
                 width={700}
                 destroyOnClose
-                okButtonProps={{ loading: loadingBtn }}
+                // okButtonProps={{ loading: loadingBtn }}
             >
                 <Form form={roleForm} layout="vertical" onFinish={handleRoleModalOk}>
                     <Form.Item name="name" label="Tên Vai Trò" rules={[{ required: true, message: 'Vui lòng nhập tên vai trò!' }]}>
